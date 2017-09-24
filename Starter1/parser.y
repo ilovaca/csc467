@@ -24,7 +24,7 @@
 #define YYERROR_VERBOSE
 #define yTRACE(x)    { if (traceParser) fprintf(traceFile, "%s\n", x); }
 
-void yyerror(char* s);    /* what to do in case of error            */
+void yyerror(const char* s);    /* what to do in case of error            */
 int yylex();              /* procedure for calling lexical analyzer */
 extern int yyline;        /* variable holding current line number   */
 
@@ -56,11 +56,16 @@ extern int yyline;        /* variable holding current line number   */
 
 %union {
   int num;
+  float floatVal;
+  char* stringVal;
+  char* keyword;
 }
 // TODO:Replace myToken with your tokens, you can use these tokens in flex
 %token           myToken1 myToken2  
-
-
+%token <num>        INT
+%token <floatVal>   FLOAT
+%token <stringVal>  STRING
+%token <keyword>    KEYWORD
 %start    program
 
 %%
@@ -78,13 +83,21 @@ program
   :   tokens       
   ;
 tokens
-  :  tokens token  
-  |      
+  :  tokens token
+  |
   ;
 // TODO: replace myToken with the token the you defined.
 token
-  :     myToken1 
-  |     myToken2                     
+  :     myToken1
+  |     myToken2
+  |     INT     { printf("[PARSER] Found INT %d\n", yylval.num);}
+  |     FLOAT   { printf("[PARSER] Found FLOAT %f\n", yylval.floatVal);}
+  |     STRING  { printf("[PARSER] Found STRING %s\n",yylval.stringVal);
+                  free(yylval.stringVal);
+                }
+  |     KEYWORD { printf("[PARSER] Found KEYWORD %s\n", yylval.keyword);
+                  free(yylval.keyword);
+                }
   ;
 
 
@@ -96,7 +109,7 @@ token
  * The given yyerror function should not be touched. You may add helper
  * functions as necessary in subsequent phases.
  ***********************************************************************/
-void yyerror(char* s) {
+void yyerror(const char* s) {
   if (errorOccurred)
     return;    /* Error has already been reported by scanner */
   else

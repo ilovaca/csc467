@@ -13,7 +13,7 @@
 
 
 #define YY_USER_INIT { yyin = inputFile; }
-#define	yyinput      input
+#define yyinput      input
 #define yTRACE(x)    { if (traceScanner) fprintf(traceFile, "TOKEN %3d : %s\n", x, yytext); }
 #define yERROR(x)    { fprintf(errorFile, "\nLEXICAL ERROR, LINE %d: %s\n", yyline, x); errorOccurred = TRUE; yyterminate(); }
 
@@ -23,8 +23,10 @@ int yyline = 1;
 %}
 %option noyywrap
 
-WS          [ \t]
-
+WS            [ \t]
+DIGIT         [0-9]
+ALPHABET      [a-zA-Z]
+ALPHANUMERIC  [a-zA-Z0-9]
 %%
 "/*"        {
               int c1      = 0;
@@ -44,7 +46,27 @@ WS          [ \t]
                   yyline++;
               }
             }
+{DIGIT}+        {
+                    printf("[SCANNER] unsigned integer: %s, length: %d\n", yytext, yyleng);
+                    yylval.num = atoi(yytext);
+                    return INT;
+                }
 
+{DIGIT}+"."{DIGIT}+ {
+                      printf("[SCANNER] unsigned floating point %s\n", yytext);
+                      yylval.floatVal = atof(yytext);
+                      return FLOAT;
+                    }
+"foobar"        {
+                    printf("[SCANNER] keyword:\"%s\"\n", yytext);
+                    yylval.keyword = strdup(yytext);
+                    return KEYWORD;
+                }
+{ALPHANUMERIC}+    {
+                    printf("[SCANNER] found string \"%s\"\n", yytext);
+                    yylval.stringVal = strdup(yytext);
+                    return STRING;
+                }
 .           { yERROR("Unknown token"); }
 
 %%
