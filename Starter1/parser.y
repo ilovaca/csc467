@@ -55,17 +55,69 @@ extern int yyline;        /* variable holding current line number   */
 // Can access me from flex useing yyval
 
 %union {
-  int num;
+  int   intVal;
   float floatVal;
+  bool  boolVal;
   char* stringVal;
-  char* keyword;
 }
 // TODO:Replace myToken with your tokens, you can use these tokens in flex
-%token           myToken1 myToken2  
-%token <num>        INT
-%token <floatVal>   FLOAT
-%token <stringVal>  STRING
-%token <keyword>    KEYWORD
+// Literals
+%token           	myToken1 myToken2
+%token <num>        LITERAL_INT
+%token <floatVal>   LITERAL_FLOAT
+%token <stringVal>  LITERAL_IDENTIFIER
+// Operators
+%token OPERATOR_ASSIGNMENT
+%token OPERATOR_PLUS
+%token OPERATOR_MINUS
+%token OPERATOR_MULT
+%token OPERATOR_DIV
+%token OPERATOR_EXP
+%token OPERATOR_NOT
+%token OPERATOR_AND
+%token OPERATOR_OR
+%token OPERATOR_EQUAL
+%token OPERATOR_NOT_EQUAL
+%token OPERATOR_LESS_THAN
+%token OPERATOR_LESS_THAN_OR_EQUAL_TO
+%token OPERATOR_LARGER_THAN
+%token OPERATOR_LARGER_THAN_OR_EQUAL_TO
+// KEYWORDS
+%token KEYWORD_TRUE
+%token KEYWORD_FALSE
+%token KEYWORD_IF
+%token KEYWORD_ELSE
+%token KEYWORD_WHILE
+%token KEYWORD_FUNCNAME_LIT
+%token KEYWORD_FUNCNAME_DP3
+%token KEYWORD_FUNCNAME_RSQ
+%token KEYWORD_QUALIFIER_CONST
+
+%token KEYWORD_DATATYPE_INT
+%token KEYWORD_DATATYPE_BOOL
+%token KEYWORD_DATATYPE_FLOAT
+%token KEYWORD_DATATYPE_VEC2
+%token KEYWORD_DATATYPE_VEC3
+%token KEYWORD_DATATYPE_VEC4
+%token KEYWORD_DATATYPE_BVEC2
+%token KEYWORD_DATATYPE_BVEC3
+%token KEYWORD_DATATYPE_BVEC4
+%token KEYWORD_DATATYPE_IVEC2
+%token KEYWORD_DATATYPE_IVEC3
+%token KEYWORD_DATATYPE_IVEC4
+
+
+// other characters
+%token CHAR_LEFT_BRACE
+%token CHAR_RIGHT_BRACE
+%token CHAR_LEFT_SQUARE_BRACKET
+%token CHAR_RIGHT_SQUARE_BRACKET
+%token CHAR_LEFT_PARENTHESIS
+%token CHAR_RIGHT_PARENTHESIS
+%token CHAR_SEMI_COLON
+%token CHAR_COLON
+%token CHAR_COMMA
+
 %start    program
 
 %%
@@ -90,14 +142,9 @@ tokens
 token
   :     myToken1
   |     myToken2
-  |     INT     { printf("[PARSER] Found INT %d\n", yylval.num);}
-  |     FLOAT   { printf("[PARSER] Found FLOAT %f\n", yylval.floatVal);}
-  |     STRING  { printf("[PARSER] Found STRING %s\n",yylval.stringVal);
-                  free(yylval.stringVal);
-                }
-  |     KEYWORD { printf("[PARSER] Found KEYWORD %s\n", yylval.keyword);
-                  free(yylval.keyword);
-                }
+  |     LITERAL_INT     { printf("[PARSER] Found INT %d\n", yylval.intVal);}
+  |     LITERAL_FLOAT   { printf("[PARSER] Found FLOAT %f\n", yylval.floatVal);}
+  |     LITERAL_IDENTIFIER { printf("[PARSER] Found IDENTIFIER %s\n", yylval.stringVal);free(yylval.stringVal);}
   ;
 
 
