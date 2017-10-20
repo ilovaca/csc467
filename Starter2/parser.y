@@ -60,10 +60,8 @@ enum {
 // defines the yyval union
 %union {
   int as_int;
-  int as_vec;
   float as_float;
   char *as_str;
-  int as_func;
 }
 
 %token          FLOAT_T
@@ -76,21 +74,20 @@ enum {
 %token          IF WHILE
 %nonassoc       "then" /*resolving if else conflicts*/
 %nonassoc       ELSE
-%token          AND OR NEQ EQ LEQ GEQ
 
 // links specific values of tokens to yyval
 %token <as_float> FLOAT_C
 %token <as_int>   INT_C
 %token <as_str>   ID
 
-%nonassoc OR
-%nonassoc AND
-%nonassoc EQ NEQ '<' LEQ '>' GEQ
-%left     '+' '-'
-%left     '*' '/'
-%right    '^'
-%nonassoc '!' UMINUS
-%left     '[' ']' '(' ')'
+%left   OR
+%left   AND
+%left   EQ NEQ '<' LEQ '>' GEQ
+%left   '+' '-'
+%left   '*' '/'
+%right  '^'
+%left   '!' UMINUS
+%left   '[' ']' '(' ')'
 
 
 %start    program
@@ -125,12 +122,8 @@ declaration
     ;
 statement
     : variable '=' expression ';'                               { yTRACE("statement -> variable = expression ;"); }
-    | IF '(' expression ')' statement  %prec "then"             { yTRACE("statement -> IF (expression) statement");}
-    | IF '(' expression ')' statement  ELSE statement           { yTRACE("statement -> IF (expression) statement ELSE statement"); 
-                                                                    #ifdef MYDEBUG
-                                                                    printf("%d\n", yyline);
-                                                                    #endif
-                                                                }
+    | IF '(' expression ')' statement  %prec "then"             { yTRACE("statement -> IF (expression) statement"); }
+    | IF '(' expression ')' statement  ELSE statement           { yTRACE("statement -> IF (expression) statement ELSE statement"); }
     | WHILE '(' expression ')' statement                        { yTRACE("statement -> WHILE(expression) statement"); }
     | scope                                                     { yTRACE("statement -> scope"); }
     | ';'                                                       { yTRACE("statement -> ;"); }
@@ -158,14 +151,14 @@ expression
     | variable                                                  { yTRACE("expression -> variable"); }
     | '!' expression %prec UMINUS                               { yTRACE("expression -> ! expression"); }
     | '-' expression %prec UMINUS                               { yTRACE("expression -> - expression"); }
-    | expression AND expression                                 { yTRACE("expression -> expression AND expression"); }
-    | expression OR  expression                                 { yTRACE("expression -> expression OR expression"); }
-    | expression EQ  expression                                 { yTRACE("expression -> expression EQ expression"); }
-    | expression NEQ expression                                 { yTRACE("expression -> expression NEQ expression"); }
+    | expression AND expression                                 { yTRACE("expression -> expression && expression"); }
+    | expression OR  expression                                 { yTRACE("expression -> expression || expression"); }
+    | expression EQ  expression                                 { yTRACE("expression -> expression == expression"); }
+    | expression NEQ expression                                 { yTRACE("expression -> expression != expression"); }
     | expression '<' expression                                 { yTRACE("expression -> expression < expression"); }
-    | expression LEQ expression                                 { yTRACE("expression -> expression LEQ expression"); }
+    | expression LEQ expression                                 { yTRACE("expression -> expression <= expression"); }
     | expression '>' expression                                 { yTRACE("expression -> expression > expression"); }
-    | expression GEQ expression                                 { yTRACE("expression -> expression GEQ expression"); }
+    | expression GEQ expression                                 { yTRACE("expression -> expression >= expression"); }
     | expression '+' expression                                 { yTRACE("expression -> expression + expression"); }
     | expression '-' expression                                 { yTRACE("expression -> expression - expression"); }
     | expression '*' expression                                 { yTRACE("expression -> expression * expression"); }

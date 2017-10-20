@@ -1,7 +1,5 @@
 #!/bin/bash
 declare -a passInputs=(
-    # empty program
-    ""
     # only scope
     "{}"
     "{;;}"
@@ -31,6 +29,17 @@ declare -a passInputs=(
         foo = int (400);
         foo = lit();;
         arr[12376] = int(400);
+    }"
+    # while statements
+    "{
+        while(true) int k = 9;
+    }"
+    "{
+        while (false) {
+            int k = 9;
+            if ( foo == true) ; else a = 5;
+            foo = rsq();
+        }
     }"
     # if-else tests
     "{
@@ -143,8 +152,10 @@ echo "******************* END *******************"              | tee -a ./passO
 
 # Add cases that are expected to fail
 declare -a failInputs=(
+    # empty program
     ""
     "{"
+
 
 )
 arraylength2=${#failInputs[@]}
