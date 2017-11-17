@@ -3,7 +3,7 @@
 #define AST_H_ 1
 
 #include <stdarg.h>
-
+#include <string>
 // Dummy node just so everything compiles, create your own node/nodes
 //
 // The code provided below is an example ONLY. You can use/modify it,
@@ -17,6 +17,7 @@
 struct node_;
 typedef struct node_ node;
 extern node *ast;
+extern std::string type_name[];
 /*
 typedef enum {
   UNKNOWN               = 0,
@@ -41,6 +42,22 @@ typedef enum {
 
   DECLARATION_NODE      = (1 << 15)
 } node_kind;*/
+
+
+typedef enum{
+  INT  = 0,
+  IVECT2 = 1,
+  IVECT3 = 2,
+  IVECT4 = 3,
+  BOOL = 4,
+  BVEC2 = 5,
+  BVEC3 = 6,
+  BVEC4 = 7,
+  FLOAT = 8,
+  VEC2 = 9,
+  VEC3 = 10,
+  VEC4 = 11
+} type_code;
 
 typedef enum {
   UNKNOWN           ,
@@ -102,7 +119,7 @@ struct node_ {
 
     struct {
       int op;
-      node *expr;
+      node *expr; // !/- expr
     } unary_expr;
 
     struct {

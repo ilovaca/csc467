@@ -12,10 +12,10 @@ declare -a passInputs=(
     "{const bvec3 fuck = dp3(333);}"
     # expressions
     "{
-        int (400);
-        int (3.383737);
-        vec4 (374673);
-        lit();
+        a= int (400);
+        b = int (3.383737);
+        c = vec4 (374673);
+        d = lit();
     }"
     # multiple declarations
     "{

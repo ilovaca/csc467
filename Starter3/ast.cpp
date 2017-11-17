@@ -10,13 +10,8 @@
 #include "common.h"
 #include "parser.tab.h"
 
-#define DEBUG_PRINT_TREE 0
 
-void ast_traverse(node * n, bool postorder = true, void (*fp)(node * n) = NULL);
-std::string getType(node *var_node) {
-  return "";
-}
-const char* type_name[] = {
+std::string type_name[] = {
   "int",
   "ivec2",
   "ivec3",
@@ -30,6 +25,7 @@ const char* type_name[] = {
   "vec3",
   "vec4"
 };
+
 
 const char* operator_name[] = {
     "&&",
@@ -52,6 +48,10 @@ const char* func_name[] = {
   "lit",
   "rsq"
 };
+#define DEBUG_PRINT_TREE 0
+
+void ast_traverse(node * n, bool postorder = true, void (*fp)(node * n) = NULL);
+std::string getType(node *var_node);
 
 node *ast = NULL;
 
@@ -230,14 +230,14 @@ void ast_print(node *n, int indent) {
   switch(kind) {
     case SCOPE_NODE:
       {
-        cout << "(SCOPE)" << endl;
+        cout << setw(indent) << ' ' << "(SCOPE)" << endl;
         // descent to print subtrees
         if (n->scope.declarations) {
-          cout << setw(4) << ' ' << "(DECLARATIONS ...)" << endl;
+          cout << setw(indent + 4) << ' ' << "(DECLARATIONS ...)" << endl;
           ast_print(n->scope.declarations, indent + 4);
         }
         if (n->scope.statements) {
-          cout << setw(4) << ' ' << "(STATEMENTS ...)" << endl;
+          cout << setw(indent + 4) << ' ' << "(STATEMENTS ...)" << endl;
           ast_print(n->scope.statements, indent + 4);
           // cout << ")";
         }
@@ -280,14 +280,15 @@ void ast_print(node *n, int indent) {
       }
     case BINARY_EXPRESSION_NODE:
       {
-        cout << /*endl << setw(indent) << ' ' <<*/ " (BINARY ";
+        cout << " (BINARY ";
         // type must be the result type of the expression
-        // FIXME: using the left expr as the type for now.
-        cout << getType(n->binary_expr.left) << " ";
+        cout << getType(n) << " ";
         cout << operator_name[n->binary_expr.op] << " ";
         // print left and right expr
-        if (n->binary_expr.left)
+        if (n->binary_expr.left){
           ast_print(n->binary_expr.left, indent + 4);
+          cout << " ";
+        }
         if (n->binary_expr.right){
           ast_print(n->binary_expr.right, indent + 4);
           cout << ")";
@@ -304,7 +305,7 @@ void ast_print(node *n, int indent) {
 
         } else {
             cout << std::boolalpha;
-            cout << " <" << n->literal.bval << ">" /*<< endl*/;            
+            cout << " <" << n->literal.bval << ">" /*<< endl*/;
         }
         break;
       }
@@ -313,12 +314,12 @@ void ast_print(node *n, int indent) {
         // VAR_NODE is a leaf
         if (n->var_node.type == 0) {
           // regular variable
-          cout << n->var_node.ident /* << endl*/;
+          cout << n->var_node.ident;
         } else {
           // vector variable with index
-          cout << setw(indent) << ' ' << "(INDEX ";
+          cout << "(INDEX ";
           // type of this variable
-          cout << getType(n);
+          cout << getType(n) << " ";
           cout << n->var_node.ident << " " << n->var_node.index << ")";
         }
         break;
@@ -354,9 +355,10 @@ void ast_print(node *n, int indent) {
       {
         cout << setw(indent) << ' ' << "(ASSIGN ";
         // type of variable, can get from the symbol table
-        cout << getType(n->assignment_node.left);
-        // variable name
-        cout << n->assignment_node.left->var_node.ident << " ";
+        cout << getType(n) << " ";
+        // variable node
+        ast_print(n->assignment_node.left);
+        cout << " ";
         // then print the expression node
         ast_print(n->assignment_node.right, indent + 4);
         cout << ")" << endl;
@@ -380,7 +382,7 @@ void ast_print(node *n, int indent) {
         ast_print(n->if_stmt_node.kids[1], indent + 4);
         // print the else statement if exists
         if (n->if_stmt_node.withElse) {
-          assert (n->if_stmt_node.kids[2] != NULL);
+          // assert (n->if_stmt_node.kids[2] != NULL);
           cout << setw(indent)<< ' ' << " ELSE";
           ast_print(n->if_stmt_node.kids[2], 0);
         }
@@ -410,7 +412,7 @@ void ast_print(node *n, int indent) {
       {
         cout << "(UNARY ";
         // type of the resulting expression
-        cout << getType(n->unary_expr.expr) << " ";
+        cout << getType(n) << " ";
         if (n->unary_expr.op == 0) {
             cout << "- ";
         }else {
@@ -561,4 +563,54 @@ void ast_postorder(node * ast, void (*f)(node * n)) {
 
 void ast_preorder(node * ast, void (*f)(node * n)) {
   ast_traverse(ast, false, f);
+}
+// get the type of the expression rooted at n
+std::string getType(node *n) {
+  assert(n != NULL);
+  if (!n) return "";
+  node_kind kind = n->kind;
+  std::string ret;
+  switch(kind) {
+    case VAR_NODE:
+      {
+        // TODO: consult symbol table
+        ret = "bool";
+        break;
+      }
+    case ASSIGNMENT_NODE:
+      {
+        // TODO: consult symbol table
+        ret = "int";
+        break;
+      }
+    case BINARY_EXPRESSION_NODE:
+      {
+        // TODO: deduce type
+        // the "resulting" type of this expression should 
+        // be either the left expression or the right expr
+        // since two exprs must have the same type to pass
+        // type checking
+        if (n->binary_expr.left) {
+          ret = getType(n->binary_expr.left);
+        } else if (n->binary_expr.right) {
+          ret = getType(n->binary_expr.right);
+        } else {
+          assert(false);
+        }
+        break;
+      }
+    case UNARY_EXPRESION_NODE:
+      {
+        // TODO: deduce type
+        ret = getType(n->unary_expr.expr);
+        break;
+      }
+    case LITERAL_NODE:
+      {
+        ret = type_name[n->literal.type];
+        break;
+      }
+    default: assert(false);
+  }
+  return ret;
 }
