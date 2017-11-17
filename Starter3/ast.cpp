@@ -249,7 +249,7 @@ void ast_print(node *n, int indent) {
         // the ... may need to expand here.
         // descent to print each DECLARATION
         if (n->declarations_node.left)
-          ast_print(n->declarations_node.left, indent + 4);
+          ast_print(n->declarations_node.left, indent);
         if (n->declarations_node.right)
           ast_print(n->declarations_node.right, indent + 4);
         // cout << setw(indent) << ' ' << ")" << endl;
