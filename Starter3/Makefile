@@ -23,7 +23,7 @@
 ###########################################################################
 CC      =g++
 CFLAGS  =-g -Wall 
-CPPFLAGS = -g
+CPPFLAGS = -g -std=c++11
 LDLIBS  =-lfl
 
 LEX     =flex

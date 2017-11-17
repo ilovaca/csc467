@@ -4,6 +4,7 @@
 
 #include <stdarg.h>
 #include <string>
+#include "symbol.h"
 // Dummy node just so everything compiles, create your own node/nodes
 //
 // The code provided below is an example ONLY. You can use/modify it,
@@ -16,48 +17,9 @@
 // forward declare
 struct node_;
 typedef struct node_ node;
+
 extern node *ast;
 extern std::string type_name[];
-/*
-typedef enum {
-  UNKNOWN               = 0,
-
-  SCOPE_NODE            = (1 << 0),
-  
-  EXPRESSION_NODE       = (1 << 2),
-  UNARY_EXPRESION_NODE  = (1 << 2) | (1 << 3),
-  BINARY_EXPRESSION_NODE= (1 << 2) | (1 << 4),
-  INT_NODE              = (1 << 2) | (1 << 5), 
-  FLOAT_NODE            = (1 << 2) | (1 << 6),
-  IDENT_NODE            = (1 << 2) | (1 << 7),
-  VAR_NODE              = (1 << 2) | (1 << 8),
-  FUNCTION_NODE         = (1 << 2) | (1 << 9),
-  CONSTRUCTOR_NODE      = (1 << 2) | (1 << 10),
-
-  STATEMENT_NODE        = (1 << 1),
-  IF_STATEMENT_NODE     = (1 << 1) | (1 << 11),
-  WHILE_STATEMENT_NODE  = (1 << 1) | (1 << 12),
-  ASSIGNMENT_NODE       = (1 << 1) | (1 << 13),
-  NESTED_SCOPE_NODE     = (1 << 1) | (1 << 14),
-
-  DECLARATION_NODE      = (1 << 15)
-} node_kind;*/
-
-
-typedef enum{
-  INT  = 0,
-  IVECT2 = 1,
-  IVECT3 = 2,
-  IVECT4 = 3,
-  BOOL = 4,
-  BVEC2 = 5,
-  BVEC3 = 6,
-  BVEC4 = 7,
-  FLOAT = 8,
-  VEC2 = 9,
-  VEC3 = 10,
-  VEC4 = 11
-} type_code;
 
 typedef enum {
   UNKNOWN           ,
@@ -94,6 +56,7 @@ struct node_ {
     struct {
       node* declarations;
       node* statements;
+      SYBL_T * symbol_table;
     } scope;
     struct {
       node* left;
@@ -150,7 +113,7 @@ struct node_ {
       node* args;
     } function_node;
     struct {
-      node* type;
+      node* type; //type_node
       node* arguments;
     } constructor_node;
     struct {

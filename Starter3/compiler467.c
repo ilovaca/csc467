@@ -87,6 +87,7 @@ int main (int argc, char *argv[]) {
   if(1 == yyparse()) {
     return 0; // parse failed
   }
+  buildSymbolTable(ast);
   // if (!semantic_check(ast)){
   //   return 0;
   // }

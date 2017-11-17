@@ -9,7 +9,7 @@
 #include "ast.h"
 #include "common.h"
 #include "parser.tab.h"
-
+using namespace std;
 
 std::string type_name[] = {
   "int",
@@ -51,7 +51,7 @@ const char* func_name[] = {
 #define DEBUG_PRINT_TREE 0
 
 void ast_traverse(node * n, bool postorder = true, void (*fp)(node * n) = NULL);
-std::string getType(node *var_node);
+type_code getType(node *var_node);
 
 node *ast = NULL;
 
@@ -70,6 +70,10 @@ node *ast_allocate(node_kind kind, ...) {
     {
       ast->scope.declarations = va_arg(args, node*);
       ast->scope.statements = va_arg(args, node*);
+      ast->scope.symbol_table = new SYBL_T;
+      // FIXME: enter this scope, push it to stack;
+      // cout << "entering scope" << endl;
+      // symbol_stack.push_back(ast->scope.symbol_table);
       break;
     }
   case DECLARATIONS_NODE:
@@ -224,12 +228,13 @@ void ast_free(node *n) {
 }
 
 void ast_print(node *n, int indent) {
-  using namespace std;
   if (n == NULL) return;
   node_kind kind = n->kind;
   switch(kind) {
     case SCOPE_NODE:
       {
+        // cout << setw(indent) << ' ' << "entering scope" << endl;
+        symbol_stack.push_back(n->scope.symbol_table);
         cout << setw(indent) << ' ' << "(SCOPE)" << endl;
         // descent to print subtrees
         if (n->scope.declarations) {
@@ -241,6 +246,8 @@ void ast_print(node *n, int indent) {
           ast_print(n->scope.statements, indent + 4);
           // cout << ")";
         }
+        cout << setw(indent) << ' ' << "leaving scope" << endl;
+        symbol_stack.pop_back();
         break;
       }
     case DECLARATIONS_NODE:
@@ -282,7 +289,7 @@ void ast_print(node *n, int indent) {
       {
         cout << " (BINARY ";
         // type must be the result type of the expression
-        cout << getType(n) << " ";
+        cout << type_name[getType(n)] << " ";
         cout << operator_name[n->binary_expr.op] << " ";
         // print left and right expr
         if (n->binary_expr.left){
@@ -319,7 +326,7 @@ void ast_print(node *n, int indent) {
           // vector variable with index
           cout << "(INDEX ";
           // type of this variable
-          cout << getType(n) << " ";
+          cout << type_name[getType(n)] << " ";
           cout << n->var_node.ident << " " << n->var_node.index << ")";
         }
         break;
@@ -355,7 +362,7 @@ void ast_print(node *n, int indent) {
       {
         cout << setw(indent) << ' ' << "(ASSIGN ";
         // type of variable, can get from the symbol table
-        cout << getType(n) << " ";
+        cout << type_name[getType(n)] << " ";
         // variable node
         ast_print(n->assignment_node.left);
         cout << " ";
@@ -412,7 +419,7 @@ void ast_print(node *n, int indent) {
       {
         cout << "(UNARY ";
         // type of the resulting expression
-        cout << getType(n) << " ";
+        cout << type_name[getType(n)] << " ";
         if (n->unary_expr.op == 0) {
             cout << "- ";
         }else {
@@ -564,50 +571,107 @@ void ast_postorder(node * ast, void (*f)(node * n)) {
 void ast_preorder(node * ast, void (*f)(node * n)) {
   ast_traverse(ast, false, f);
 }
+
+type_code searchSymbolTable(const char* id) {
+  type_code ret = ERROR;
+  std::string key = id;
+  for (auto rit = symbol_stack.rbegin(); rit != symbol_stack.rend(); ++rit) {
+    auto it = (**rit).find(key);
+    if (it != (**rit).end()){
+      // found
+      ret = it->second;
+      return ret;
+    }
+  }
+  return ret;
+}
+
+type_code deduceType(type_code a, type_code b) {
+
+}
+
 // get the type of the expression rooted at n
-std::string getType(node *n) {
+type_code getType(node *n) {
   assert(n != NULL);
-  if (!n) return "";
+  if (!n) return ERROR;
   node_kind kind = n->kind;
-  std::string ret;
+  type_code ret;
   switch(kind) {
     case VAR_NODE:
       {
-        // TODO: consult symbol table
-        ret = "bool";
+        // TODO: consult symbol table, from inner scope to outer scope
+        ret = searchSymbolTable(n->var_node.ident);
+        if (ret == ERROR)
+          cout << "ERROR: symbol not found" << endl;
         break;
       }
     case ASSIGNMENT_NODE:
       {
         // TODO: consult symbol table
-        ret = "int";
+        ret = searchSymbolTable(n->assignment_node.left->var_node.ident);
+        if (ret == ERROR)
+          cout << "ERROR: symbol not found" << endl;
         break;
       }
     case BINARY_EXPRESSION_NODE:
       {
         // TODO: deduce type
         // the "resulting" type of this expression should 
-        // be either the left expression or the right expr
-        // since two exprs must have the same type to pass
-        // type checking
+        // be of the base type, but not necessarily the same type
+        // get the type of two sub expressions
+        type_code lhs, rhs;
         if (n->binary_expr.left) {
-          ret = getType(n->binary_expr.left);
-        } else if (n->binary_expr.right) {
-          ret = getType(n->binary_expr.right);
-        } else {
-          assert(false);
+          lhs = getType(n->binary_expr.left);
         }
+        if (n->binary_expr.right) {
+          rhs = getType(n->binary_expr.right);
+        }
+        if (lhs == ERROR || rhs == ERROR) {
+          cout << "FATAL ERROR" << endl;
+        }
+        // the result type of the final expression depends on the
+        // the sub expression and the type of operator
+        ret = deduceType(lhs, rhs);
         break;
       }
     case UNARY_EXPRESION_NODE:
       {
-        // TODO: deduce type
+        // TODO: the resulting type must be of
+        // the type of the expression
         ret = getType(n->unary_expr.expr);
         break;
       }
     case LITERAL_NODE:
       {
-        ret = type_name[n->literal.type];
+        ret = (type_code)n->literal.type;
+        break;
+      }
+    case FUNCTION_NODE:
+      {
+        // depending on the function, the return type can be different
+        if (ast->function_node.type == 0) {
+          // DP3
+          // if param is vec3/4, then return FLOAT
+          if (getType(n->function_node.args) == VEC3
+              || getType(n->function_node.args) == VEC4) {
+            return FLOAT;
+          } else if ( getType(n->function_node.args) == VEC3
+                || getType(n->function_node.args) == VEC4) {
+            return INT;
+          }
+        } else if(ast->function_node.type == 1) {
+          // lit
+          return VEC4;
+        } else {
+          // rsq
+          assert(ast->function_node.type == 2);
+          return FLOAT;
+        }
+        break;
+      }
+    case CONSTRUCTOR_NODE:
+      {
+        return (type_code)n->constructor_node.type->type_node.code;
         break;
       }
     default: assert(false);

@@ -128,6 +128,19 @@ declare -a passInputs=(
         a = 1 ^ 2 + 3;
         a = 1 ^ 2 - 3;
     }"
+    "{
+        {
+            a = 1 + 2;
+        }
+        {
+            {
+                {a = bvec3();}
+            }
+            if (false) {
+                int k = 9;
+            }
+        }
+    }"
     #add more test cases here, enclose the test program in double quotes
 )
 
