@@ -586,8 +586,27 @@ type_code searchSymbolTable(const char* id) {
   return ret;
 }
 
+bool isVector(type_code T) {
+  if (T == VEC2 || T == VEC3 || T == VEC4
+      || T == IVEC2 || T == IVEC3 || T == IVEC4
+      || T == BVEC2 || T == BVEC3 || T == BVEC4){
+    return true;
+  }
+  else return false;
+}
 type_code deduceType(type_code a, type_code b) {
+  // 4 cases, a, b both can be either scalar or vector
+  type_code ret = ERROR;
+  if (isVector(a) && isVector(b)) {
 
+  } else if (!isVector(a) && isVector(b)) {
+
+  } else if (isVector(a) && !isVector(b)) {
+
+  } else {
+    // !isVector(a) && !isVector(b)
+  }
+  return ret;
 }
 
 // get the type of the expression rooted at n
@@ -601,8 +620,20 @@ type_code getType(node *n) {
       {
         // TODO: consult symbol table, from inner scope to outer scope
         ret = searchSymbolTable(n->var_node.ident);
-        if (ret == ERROR)
+        // FIXME: is ivec3[1] of type INT or IVEC3?
+        if (ret == ERROR) {
           cout << "ERROR: symbol not found" << endl;
+        }
+        if (n->var_node.type == 1){
+          // this is a vector indexing
+          if (ret == IVEC2 || ret == IVEC3 || ret == IVEC4) {
+            ret = INT;
+          } else if (ret == BVEC2 || ret == BVEC3 || ret == BVEC4) {
+            ret = BOOL;
+          } else if (ret == VEC2 || ret == VEC3 || ret == VEC4) {
+            ret = FLOAT;
+          }
+        }
         break;
       }
     case ASSIGNMENT_NODE:

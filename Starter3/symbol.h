@@ -8,9 +8,9 @@ struct node_;
 typedef struct node_ node;
 typedef enum{
   INT  = 0,
-  IVECT2 = 1,
-  IVECT3 = 2,
-  IVECT4 = 3,
+  IVEC2 = 1,
+  IVEC3 = 2,
+  IVEC4 = 3,
   BOOL = 4,
   BVEC2 = 5,
   BVEC3 = 6,
