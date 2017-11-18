@@ -594,7 +594,7 @@ bool isVector(type_code T) {
   }
   else return false;
 }
-type_code deduceType(type_code a, type_code b) {
+type_code deduceType(type_code a, type_code b, int op) {
   // 4 cases, a, b both can be either scalar or vector
   type_code ret = ERROR;
   if (isVector(a) && isVector(b)) {
@@ -662,7 +662,7 @@ type_code getType(node *n) {
         }
         // the result type of the final expression depends on the
         // the sub expression and the type of operator
-        ret = deduceType(lhs, rhs);
+        ret = deduceType(lhs, rhs, n->binary_expr.op);
         break;
       }
     case UNARY_EXPRESION_NODE:
