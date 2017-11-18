@@ -130,7 +130,12 @@ enum {
  ***********************************************************************/
 program
   : scope 
-      { yTRACE("program -> scope\n"); ast = $1; } 
+      { yTRACE("program -> scope\n");
+        ast = $1;
+        if (semantic_check()) {
+
+        }
+      } 
   ;
 
 scope

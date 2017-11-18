@@ -23,7 +23,8 @@ std::string type_name[] = {
   "float",
   "vec2",
   "vec3",
-  "vec4"
+  "vec4",
+  "TYPE_ERROR"
 };
 
 
@@ -126,14 +127,18 @@ node *ast_allocate(node_kind kind, ...) {
       if (ast->literal.type == 0) {
         // int literal
         ast->literal.ival = va_arg(args, int);
+        ast->literal.type = INT;
       } else if (ast->literal.type == 1) {
         // float literal
         ast->literal.fval = (float)va_arg(args, double);
+        ast->literal.type = FLOAT;
       } else if (ast->literal.type == 2) {
         // bool literal
         ast->literal.bval = false;
+        ast->literal.type = BOOL;
       } else if (ast->literal.type == 3){
         ast->literal.bval = true;
+        ast->literal.type = BOOL;
       } else {
         assert(ast->literal.type <= 2);
       }
@@ -305,9 +310,9 @@ void ast_print(node *n, int indent) {
     case LITERAL_NODE:
       {
         // LITERAL node is a leaf
-        if (n->literal.type == 0) {
+        if (n->literal.type == INT) {
             cout << " <" << n->literal.ival << ">" /*<< endl*/;
-        } else if (n->literal.type == 1){
+        } else if (n->literal.type == FLOAT){
             cout << " <" << n->literal.fval << ">" /*<< endl*/;
 
         } else {
@@ -572,140 +577,3 @@ void ast_preorder(node * ast, void (*f)(node * n)) {
   ast_traverse(ast, false, f);
 }
 
-type_code searchSymbolTable(const char* id) {
-  type_code ret = ERROR;
-  std::string key = id;
-  for (auto rit = symbol_stack.rbegin(); rit != symbol_stack.rend(); ++rit) {
-    auto it = (**rit).find(key);
-    if (it != (**rit).end()){
-      // found
-      ret = it->second;
-      return ret;
-    }
-  }
-  return ret;
-}
-
-bool isVector(type_code T) {
-  if (T == VEC2 || T == VEC3 || T == VEC4
-      || T == IVEC2 || T == IVEC3 || T == IVEC4
-      || T == BVEC2 || T == BVEC3 || T == BVEC4){
-    return true;
-  }
-  else return false;
-}
-type_code deduceType(type_code a, type_code b, int op) {
-  // 4 cases, a, b both can be either scalar or vector
-  type_code ret = ERROR;
-  if (isVector(a) && isVector(b)) {
-
-  } else if (!isVector(a) && isVector(b)) {
-
-  } else if (isVector(a) && !isVector(b)) {
-
-  } else {
-    // !isVector(a) && !isVector(b)
-  }
-  return ret;
-}
-
-// get the type of the expression rooted at n
-type_code getType(node *n) {
-  assert(n != NULL);
-  if (!n) return ERROR;
-  node_kind kind = n->kind;
-  type_code ret;
-  switch(kind) {
-    case VAR_NODE:
-      {
-        // TODO: consult symbol table, from inner scope to outer scope
-        ret = searchSymbolTable(n->var_node.ident);
-        // FIXME: is ivec3[1] of type INT or IVEC3?
-        if (ret == ERROR) {
-          cout << "ERROR: symbol not found" << endl;
-        }
-        if (n->var_node.type == 1){
-          // this is a vector indexing
-          if (ret == IVEC2 || ret == IVEC3 || ret == IVEC4) {
-            ret = INT;
-          } else if (ret == BVEC2 || ret == BVEC3 || ret == BVEC4) {
-            ret = BOOL;
-          } else if (ret == VEC2 || ret == VEC3 || ret == VEC4) {
-            ret = FLOAT;
-          }
-        }
-        break;
-      }
-    case ASSIGNMENT_NODE:
-      {
-        // TODO: consult symbol table
-        ret = searchSymbolTable(n->assignment_node.left->var_node.ident);
-        if (ret == ERROR)
-          cout << "ERROR: symbol not found" << endl;
-        break;
-      }
-    case BINARY_EXPRESSION_NODE:
-      {
-        // TODO: deduce type
-        // the "resulting" type of this expression should 
-        // be of the base type, but not necessarily the same type
-        // get the type of two sub expressions
-        type_code lhs, rhs;
-        if (n->binary_expr.left) {
-          lhs = getType(n->binary_expr.left);
-        }
-        if (n->binary_expr.right) {
-          rhs = getType(n->binary_expr.right);
-        }
-        if (lhs == ERROR || rhs == ERROR) {
-          cout << "FATAL ERROR" << endl;
-        }
-        // the result type of the final expression depends on the
-        // the sub expression and the type of operator
-        ret = deduceType(lhs, rhs, n->binary_expr.op);
-        break;
-      }
-    case UNARY_EXPRESION_NODE:
-      {
-        // TODO: the resulting type must be of
-        // the type of the expression
-        ret = getType(n->unary_expr.expr);
-        break;
-      }
-    case LITERAL_NODE:
-      {
-        ret = (type_code)n->literal.type;
-        break;
-      }
-    case FUNCTION_NODE:
-      {
-        // depending on the function, the return type can be different
-        if (ast->function_node.type == 0) {
-          // DP3
-          // if param is vec3/4, then return FLOAT
-          if (getType(n->function_node.args) == VEC3
-              || getType(n->function_node.args) == VEC4) {
-            return FLOAT;
-          } else if ( getType(n->function_node.args) == VEC3
-                || getType(n->function_node.args) == VEC4) {
-            return INT;
-          }
-        } else if(ast->function_node.type == 1) {
-          // lit
-          return VEC4;
-        } else {
-          // rsq
-          assert(ast->function_node.type == 2);
-          return FLOAT;
-        }
-        break;
-      }
-    case CONSTRUCTOR_NODE:
-      {
-        return (type_code)n->constructor_node.type->type_node.code;
-        break;
-      }
-    default: assert(false);
-  }
-  return ret;
-}

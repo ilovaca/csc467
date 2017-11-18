@@ -3,6 +3,10 @@
 
 #include <map>
 #include <vector>
+#include <iostream>
+#include "common.h"
+#define SEMANTIC_ERROR(x) { errorOccurred = 1;fprintf(traceFile, "%s\n", x);std::cout << x << std::endl; }
+
 // #include "ast.h"
 struct node_;
 typedef struct node_ node;
@@ -22,10 +26,26 @@ typedef enum{
   ERROR = 12
 } type_code;
 
-typedef std::map<std::string, type_code> SYBL_T;
+typedef enum {
+    ATTRIBUTE = 0,
+    UNIFORM,
+    RESULT,
+    CONST_VAR
+} predef_attr;
+
+struct symbol_attr
+{
+    type_code type;
+    predef_attr predef;
+    symbol_attr(type_code t, predef_attr p):type(t), predef(p) {}
+};
+
+typedef std::map<std::string, struct symbol_attr> SYBL_T;
 
 extern std::vector<SYBL_T*> symbol_stack;
-
+extern SYBL_T predefined_vars;
+// void addPredefinedSymbolTable();
 void buildSymbolTable(node *);
+type_code searchSymbolTable(const char* id);
 #endif
 

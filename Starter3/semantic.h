@@ -5,6 +5,6 @@
 #include "symbol.h"
 
 
-int semantic_check( node *ast);
+int semantic_check();
 
 #endif

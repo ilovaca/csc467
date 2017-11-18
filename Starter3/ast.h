@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <string>
 #include "symbol.h"
+#include <vector>
 // Dummy node just so everything compiles, create your own node/nodes
 //
 // The code provided below is an example ONLY. You can use/modify it,
@@ -75,7 +76,7 @@ struct node_ {
       node *kids[3];
     } if_stmt_node;
     struct {
-      int type;
+      int type; // 0 is non-initialized, 1 is with initializing expresion
       node* kids[2]; // type node and expression node
       char* ident; // identifier of variable
     } declaration_node;
@@ -89,6 +90,7 @@ struct node_ {
       int op;
       node *left; // more expressions...
       node *right; // current expression
+      type_code result_type;
     } binary_expr;
     // data types
     struct {
@@ -105,8 +107,9 @@ struct node_ {
     } literal;
     struct {
       int type;
-      char * ident;
+      char *ident;
       int index;
+      type_code result_type;
     } var_node;
     struct {
       int type;
@@ -119,6 +122,10 @@ struct node_ {
     struct {
       node* left; // more args...
       node* right; // current arg...
+      int num_args;
+      // type_code left_type;
+      // type_code right_type;
+      std::vector<type_code> args_type;
     } arguments_node;
   };
 };
