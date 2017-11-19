@@ -73,7 +73,14 @@ type_code deduceType(type_code a, type_code b, int op) {
             SEMANTIC_ERROR(msg.c_str());
             ret = ERROR;
         }
-        if (ret != ERROR) ret = a;
+        if (baseType(a) != BOOL || baseType(b) != BOOL) {
+            std::string msg = "ERROR: operand type to " 
+                        + std::string(operator_name[op])
+                        + " must be boolean types";
+            SEMANTIC_ERROR(msg.c_str());
+            ret = ERROR;
+        }
+        if (ret != ERROR) ret = BOOL;
     } else if (op == 2 || op == 3) {// "==" and "!="
         if (typeDimension(a) != typeDimension(b)) {
             std::string msg = "ERROR: operand type to " 
@@ -273,6 +280,10 @@ void typeCheck(node * n) {
         }
     case DECLARATION_NODE:
         {
+            // check for predefined variables
+            if (searchPredefined(n->declaration_node.ident).second.type != ERROR) {
+                SEMANTIC_ERROR("ERROR: identifier already predefined");
+            }
             // check if redefining variables
             auto current = symbol_stack.back();
             auto ret = current->insert(std::pair<std::string, struct symbol_attr>(

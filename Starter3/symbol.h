@@ -49,6 +49,7 @@ extern std::vector<SYBL_T*> symbol_stack;
 extern SYBL_T predefined_vars;
 // void addPredefinedSymbolTable();
 void buildSymbolTable(node *);
+std::pair<std::string, struct symbol_attr> searchPredefined(const char* id);
 std::pair<std::string, struct symbol_attr> searchSymbolTable(const char* id);
 #endif
 

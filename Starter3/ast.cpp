@@ -398,10 +398,10 @@ void ast_print(node *n, int indent) {
         // print the else statement if exists
         if (n->if_stmt_node.withElse) {
           // assert (n->if_stmt_node.kids[2] != NULL);
-          cout << setw(indent)<< ' ' << " ELSE";
-          ast_print(n->if_stmt_node.kids[2], 0);
+          cout << setw(indent)<< ' ' << " ELSE" << endl;
+          ast_print(n->if_stmt_node.kids[2], indent + 4);
         }
-        cout << setw(indent)<< ' ' << ")" << endl;
+        cout << setw(indent)<< ' ' << "ENDIF)" << endl;
         // // print subtree
         // if (n->if_stmt_node.withElse) {
         //   ast_print(n->if_stmt_node.kids[0]);

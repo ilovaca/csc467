@@ -103,9 +103,21 @@ void buildSymbolTable(node * n) {
   }
 }
 
+std::pair<std::string, struct symbol_attr> searchPredefined(const char* id) {
+  std::pair<std::string, struct symbol_attr> ret("", {.type = ERROR, .predef = NONE});
+  std::string key = id;
+  auto it = symbol_stack.front()->find(key);
+  if (it != symbol_stack.front()->end()){
+      // found
+      ret = *it;
+      return ret;
+  }
+  return ret;
+}
+
+
 std::pair<std::string, struct symbol_attr> searchSymbolTable(const char* id) {
   std::pair<std::string, struct symbol_attr> ret("", {.type = ERROR, .predef = NONE});
-  // ret.type = ERROR;
   std::string key = id;
   for (auto rit = symbol_stack.rbegin(); rit != symbol_stack.rend(); ++rit) {
     auto it = (**rit).find(key);
