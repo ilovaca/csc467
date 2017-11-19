@@ -275,6 +275,7 @@ void ast_print(node *n, int indent) {
             << type_name[n->declaration_node.kids[0]->type_node.code];
         if (n->declaration_node.type == 1
               || n->declaration_node.type == 2) {
+        	cout << " ";
           // print initial value in expression form.
           ast_print(n->declaration_node.kids[1], indent + 4);
         }
@@ -325,13 +326,13 @@ void ast_print(node *n, int indent) {
       {
         // VAR_NODE is a leaf
         if (n->var_node.type == 0) {
-          // regular variable
-          cout << n->var_node.ident;
+          // regular variable, print type and its identifier
+          cout << "<VAR " << type_name[n->var_node.result_type] << " "<< n->var_node.ident << ">";
         } else {
           // vector variable with index
           cout << "(INDEX ";
           // type of this variable
-          cout << type_name[getType(n)] << " ";
+          cout << type_name[n->var_node.result_type] << " ";
           cout << n->var_node.ident << " " << n->var_node.index << ")";
         }
         break;
@@ -341,8 +342,10 @@ void ast_print(node *n, int indent) {
         cout << "(CALL ";
         cout << func_name[n->function_node.type];
         // print arguments
-        if (n->function_node.args)
-          ast_print(n->function_node.args);
+        if (n->function_node.args){
+        	cout << " ";
+          	ast_print(n->function_node.args);
+        }
         cout << ")";
         break;
       }

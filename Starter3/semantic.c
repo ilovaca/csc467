@@ -164,35 +164,19 @@ type_code getType(node *n) {
   assert(n != NULL);
   if (!n) return ERROR;
   node_kind kind = n->kind;
-  type_code ret;
+  type_code ret = ERROR;
   switch(kind) {
     case VAR_NODE:
       {
-        // TODO: consult symbol table, from inner scope to outer scope
-        ret = searchSymbolTable(n->var_node.ident);
-        // FIXME: is ivec3[1] of type INT or IVEC3?
-        if (ret == ERROR) {
-          cout << "ERROR: symbol not found" << endl;
-        }
-        if (n->var_node.type == 1){
-          // this is a vector indexing
-          if (ret == IVEC2 || ret == IVEC3 || ret == IVEC4) {
-            ret = INT;
-          } else if (ret == BVEC2 || ret == BVEC3 || ret == BVEC4) {
-            ret = BOOL;
-          } else if (ret == VEC2 || ret ==  VEC3 || ret == VEC4) {
-            ret = FLOAT;
-          }
-        }
-
+        ret = n->var_node.result_type;
         break;
       }
     case ASSIGNMENT_NODE:
       {
         // TODO: consult symbol table
         ret = searchSymbolTable(n->assignment_node.left->var_node.ident);
-        if (ret == ERROR)
-          cout << "ERROR: symbol not found" << endl;
+        // if (ret == ERROR)
+        //   cout << "ERROR: symbol not found" << endl;
         break;
       }
     case BINARY_EXPRESSION_NODE:
@@ -231,30 +215,13 @@ type_code getType(node *n) {
       }
     case FUNCTION_NODE:
       {
-        // depending on the function, the return type can be different
-        if (ast->function_node.type == 0) {
-          // DP3
-          // if param is vec3/4, then return FLOAT
-          if (getType(n->function_node.args) == VEC3
-              || getType(n->function_node.args) == VEC4) {
-            return FLOAT;
-          } else if ( getType(n->function_node.args) == VEC3
-                || getType(n->function_node.args) == VEC4) {
-            return INT;
-          }
-        } else if(ast->function_node.type == 1) {
-          // lit
-          return VEC4;
-        } else {
-          // rsq
-          assert(ast->function_node.type == 2);
-          return FLOAT;
-        }
+
+        ret = n->function_node.result_type;
         break;
       }
     case CONSTRUCTOR_NODE:
       {
-        return (type_code)n->constructor_node.type->type_node.code;
+        return n->constructor_node.result_type;
         break;
       }
     case TYPE_NODE:
@@ -304,15 +271,19 @@ int getNumOfChildren(node *n) {
     }
 }
 
-type_code typeCheck(node * n) {
-  assert(n != NULL);
+void typeCheck(node * n) {
   // FIXME
-  if (!n) return ERROR;
+  // if (!n) return ERROR;
+  if (!n) return;
   node_kind kind = n->kind;
-  type_code ret;
+  // type_code ret;
   switch(kind) {
     case SCOPE_NODE:
         {
+            // entering a scope, create symbol table
+            n->scope.symbol_table = new SYBL_T;
+            // then push this table to the stack, as current scope
+            symbol_stack.push_back(n->scope.symbol_table);
             // check declaration and statements
             if (n->scope.declarations) {
                 typeCheck(n->scope.declarations);
@@ -320,6 +291,8 @@ type_code typeCheck(node * n) {
             if (n->scope.statements) {
                 typeCheck(n->scope.statements);
             }
+            // leaving current scope, pop it from stack
+            symbol_stack.pop_back();
             break;
         }
     case DECLARATIONS_NODE:
@@ -332,15 +305,27 @@ type_code typeCheck(node * n) {
         }
     case DECLARATION_NODE:
         {
-            // check intializer (expression) type
-            typeCheck(n->declaration_node.kids[1]);
-            type_code init_type = getType(n->declaration_node.kids[1]);
-            type_code decl_type = getType(n->declaration_node.kids[0]);
-            if (init_type != decl_type) {
-                SEMANTIC_ERROR("ERROR: intializer does not match type of declaration");
+            // check if redefining variables
+            auto current = symbol_stack.back();
+            auto ret = current->insert(std::pair<std::string, struct symbol_attr>(
+                            string(n->declaration_node.ident),
+                            {.type = (type_code)n->declaration_node.kids[0]->type_node.code,
+                                .predef = n->declaration_node.type == 2? CONST_VAR : (predef_attr) 0}));
+            // insert failure means redefinition
+            if (!ret.second) {
+                SEMANTIC_ERROR("ERROR: redefining identifier");
+            }
+            // check intializer (expression) type, if exits
+            if (n->declaration_node.type == 1 || n->declaration_node.type == 2){
+                typeCheck(n->declaration_node.kids[1]);
+                type_code init_type = getType(n->declaration_node.kids[1]);
+                type_code decl_type = getType(n->declaration_node.kids[0]);
+                if (init_type != decl_type) {
+                    SEMANTIC_ERROR("ERROR: intializer does not match type of declaration");
+                }
             }
             // TODO: insert to symbol table
-            // if this decl is CONST qualified, check
+            // if this decl is CONST qualified, check that
             // expression must be literal or UNIFORM variable
             if (n->declaration_node.type == 2) {
                 if (n->declaration_node.kids[1]->kind != LITERAL_NODE
@@ -360,10 +345,9 @@ type_code typeCheck(node * n) {
       {
         /*VAR_NODE is a leaf*/
         // Check if variable is already declared
-        ret = searchSymbolTable(n->var_node.ident);
+        type_code ret = searchSymbolTable(n->var_node.ident);
         // FIXME: is ivec3[1] of type INT or IVEC3?
         if (ret == ERROR) {
-            cout << "ERROR: symbol not found" << endl;
             SEMANTIC_ERROR("ERROR: symbol not found");
         }
         // If this variable is a vector indexing, check out of bound access
@@ -382,27 +366,25 @@ type_code typeCheck(node * n) {
                 SEMANTIC_ERROR("ERROR: out of bound vector access");
             }
           }
+          // report the basetype of the vector
+          n->var_node.result_type = baseType(ret);
+        } else {
+            // update this var_node's data type
+            n->var_node.result_type = ret;
         }
-        // update this var_node's data type
-        n->var_node.result_type = ret;
         break;
       }
     case ASSIGNMENT_NODE:
       {
-        // check lhs of assignment
-        type_code lhs = searchSymbolTable(n->assignment_node.left->var_node.ident);
-        if (lhs == ERROR) {
-            cout << "ERROR: symbol not found" << endl;
-            SEMANTIC_ERROR("ERROR: symbol not found");
-        }
+        // check lhs of assignment (variable)
+        typeCheck(n->assignment_node.left);
         // check rhs of assignment (expression)
+        typeCheck(n->assignment_node.right);
+        type_code lhs = getType(n->assignment_node.left);
         type_code rhs = getType(n->assignment_node.right);
-        if (rhs == ERROR) {
-            //pass
-        }
         if (lhs != rhs) {
             // lhs and rhs not of same type
-            SEMANTIC_ERROR("ASSIGNMENT_NODE, lhs and rhs not of the same type");
+            SEMANTIC_ERROR("ERROR: in assignment, lhs and rhs not of the same type");
         }
         // assignment node does not have a result type
         break;
@@ -433,78 +415,102 @@ type_code typeCheck(node * n) {
       {
         // TODO: the resulting type must be of
         // the type of the expression
-        ret = getType(n->unary_expr.expr);
+        n->unary_expr.result_type = getType(n->unary_expr.expr);
         break;
       }
     case LITERAL_NODE:
       {
-        ret = (type_code)n->literal.type;
+        // ret = (type_code)n->literal.type;
         break;
       }
     case FUNCTION_NODE:
       {
+        // check args
+        unsigned int num_args = 0;
+        if (n->function_node.args) {
+            typeCheck(n->function_node.args);
+            num_args = n->function_node.args->arguments_node.args_type.size();
+        }
         // depending on the function, the return type can be different
         if (n->function_node.type == 0) {
           // DP3
-          if (getNumArgs(n->function_node.args) != 2){
+          if (num_args != 2){
             SEMANTIC_ERROR("ERROR: invalid number of arguments to DP3()");
+            n->function_node.result_type = ERROR;
+            return;
           }
           // check args type
-          type_code first_arg = getType(n->function_node.args->arguments_node.right);
-          type_code second_arg = getType(n->function_node.args->arguments_node.left->arguments_node.right);
-          if ( first_arg != VEC4 || second_arg != VEC4) {
+          type_code first_arg = n->function_node.args->arguments_node.args_type[0];
+          type_code second_arg = n->function_node.args->arguments_node.args_type[1];
+          if ( first_arg == VEC4 && second_arg == VEC4) {
+            n->function_node.result_type = FLOAT;
+          } else if (first_arg == VEC3 && second_arg == VEC3) {
+            n->function_node.result_type = FLOAT;
+          } else if (first_arg == IVEC4 && second_arg == IVEC4) {
+            n->function_node.result_type = INT;
+          } else if (first_arg == IVEC3 && second_arg == IVEC3) {
+            n->function_node.result_type = INT;
+          } else {
             SEMANTIC_ERROR("ERROR: invalid arguments type to DP3");
-          } else if ( first_arg != VEC3 || second_arg != VEC3) {
-            SEMANTIC_ERROR("ERROR: invalid arguments type to DP3");
-          } else if (first_arg != IVEC4 || second_arg != IVEC4) {
-            SEMANTIC_ERROR("ERROR: invalid arguments type to DP3");
-          } else if (first_arg != IVEC3 || second_arg != IVEC3) {
-            SEMANTIC_ERROR("ERROR: invalid arguments type to DP3");
+            n->function_node.result_type = ERROR;
           }
         } else if(n->function_node.type == 1) {
             // vec4 lit(vec4)
-            if (getNumArgs(n->function_node.args) != 1){
+            if (num_args != 1){
                 SEMANTIC_ERROR("ERROR: invalid number of arguments to lit()");
+                n->function_node.result_type = ERROR;
+                return;
             }
-            if (getType(n->function_node.args) != VEC4) {
+            if (n->function_node.args->arguments_node.args_type[0] == VEC4) {
+                n->function_node.result_type = VEC4;
+            } else {
                 SEMANTIC_ERROR("ERROR: invalid arguments to lit()");
+                n->function_node.result_type = ERROR;
             }
         } else {
-          // rsq
-          assert(n->function_node.type == 2);
-          if (getNumArgs(n->function_node.args) != 1) {
-            SEMANTIC_ERROR("ERROR: invalid number of arguments to rsq()");
-          }
-          if (getType(n->function_node.args) != FLOAT 
-                || getType(n->function_node.args) != INT) {
-                SEMANTIC_ERROR("ERROR: invalid arguments types to rsq()");
+            // rsq
+            assert(n->function_node.type == 2);
+            if (num_args != 1) {
+                SEMANTIC_ERROR("ERROR: invalid number of arguments to rsq()");
+                n->function_node.result_type = ERROR;
+                return;
             }
+            if (n->function_node.args->arguments_node.args_type[0] == FLOAT 
+                || n->function_node.args->arguments_node.args_type[0] == INT) {
+                n->function_node.result_type = FLOAT;
+            } else {
+                SEMANTIC_ERROR("ERROR: invalid arguments types to rsq()");
+                n->function_node.result_type = ERROR;
+            }
+
         }
         break;
       }
     case CONSTRUCTOR_NODE:
       {
-        // check args
-        typeCheck(n->constructor_node.arguments);
-        int num_args = getNumArgs(n->constructor_node.arguments);
-        type_code ctor_type = getType(n);
-        // type_code arg_type = getType(n->constructor_node.arguments);
-        // check arguments number
-        if (num_args != typeDimension(ctor_type)) {
-            SEMANTIC_ERROR("ERROR: invalid number of arguments to constructor");
+        // constructor type
+        typeCheck(n->constructor_node.type);
+        type_code ctor_type = getType(n->constructor_node.type);
+        unsigned int num_args = 0;
+        // check args if exists
+        if (n->constructor_node.arguments){
+            typeCheck(n->constructor_node.arguments);
+            num_args = n->constructor_node.arguments->arguments_node.args_type.size();
         }
-        auto& args_vec = n->constructor_node.arguments->arguments_node.args_type;
-        if (args_vec.size() != (unsigned int)typeDimension(ctor_type)){
+        if (num_args != (unsigned int)typeDimension(ctor_type)){
             SEMANTIC_ERROR("ERROR: invalid number of arguments to constructor");            
+            n->constructor_node.result_type = ERROR;
+            return;
         }
-        // check arguments type
-        // if (ctor_type != baseType(arg_type)){
-        // }
-        for (type_code T : args_vec) {
-            if (T != baseType(ctor_type)) {
-                SEMANTIC_ERROR("ERROR: invalid arguments type to constructor");
+        // check if args is the same type
+        if (n->constructor_node.arguments){
+            for (type_code T : n->constructor_node.arguments->arguments_node.args_type) {
+                if (T != baseType(ctor_type)) {
+                    SEMANTIC_ERROR("ERROR: invalid arguments type to constructor");
+                }
             }
         }
+        n->constructor_node.result_type = ctor_type;
         break;
       }
     case STATEMENTS_NODE:
@@ -533,6 +539,7 @@ type_code typeCheck(node * n) {
     case ARGUMENTS_NODE:
         {
             // get left arguments
+            assert(n!=NULL);
             if (n->arguments_node.left) {
                 if (n->arguments_node.left->kind == ARGUMENTS_NODE) {
                     // build left arguments node
@@ -540,23 +547,28 @@ type_code typeCheck(node * n) {
                     n->arguments_node.args_type = n->arguments_node.left->arguments_node.args_type;
                 } else {
                     // left argument is an expression
+                    typeCheck(n->arguments_node.left);
                     n->arguments_node.args_type.push_back(getType(n->arguments_node.left));
                 }
             }
             // get current arguments
             if (n->arguments_node.right) {
+                typeCheck(n->arguments_node.right);
                 n->arguments_node.args_type.push_back(getType(n->arguments_node.right));
             }
             break;
         }
+    case TYPE_NODE:
+        {
+            break;
+        }
     default: assert(false);
   }
-  return ret;
 }
 
 int semantic_check() {
     // 1. build symbol table
-    buildSymbolTable(ast);
+    // buildSymbolTable(ast);
     // 2. type check, and update resulting type in nodes
     typeCheck(ast);
   return 0; // failed checks

@@ -84,6 +84,7 @@ struct node_ {
     struct {
       int op;
       node *expr; // !/- expr
+      type_code result_type;
     } unary_expr;
 
     struct {
@@ -112,12 +113,14 @@ struct node_ {
       type_code result_type;
     } var_node;
     struct {
-      int type;
-      node* args;
+      int type; // name of the function
+      node* args; // arguments
+      type_code result_type;
     } function_node;
     struct {
       node* type; //type_node
       node* arguments;
+      type_code result_type;
     } constructor_node;
     struct {
       node* left; // more args...

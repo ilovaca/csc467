@@ -83,7 +83,6 @@ void buildSymbolTable(node * n) {
                             {.type = (type_code)n->declaration_node.kids[0]->type_node.code,
                                 .predef = n->declaration_node.type == 2? CONST_VAR : (predef_attr) 0}));
         if (!ret.second) {
-            cout << "ERROR: identifier already declared" << endl;
             SEMANTIC_ERROR("ERROR: redefining identifier");
         }
         // don't need to traverse further, avoid printing the expression node again
