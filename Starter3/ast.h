@@ -126,8 +126,6 @@ struct node_ {
       node* left; // more args...
       node* right; // current arg...
       int num_args;
-      // type_code left_type;
-      // type_code right_type;
       std::vector<type_code> args_type;
     } arguments_node;
   };

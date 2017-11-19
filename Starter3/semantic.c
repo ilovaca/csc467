@@ -415,7 +415,6 @@ void typeCheck(node * n) {
       }
     case UNARY_EXPRESION_NODE:
       {
-        // TODO: the resulting type must be of
         // the type of the expression
         n->unary_expr.result_type = getType(n->unary_expr.expr);
         break;
@@ -526,9 +525,11 @@ void typeCheck(node * n) {
     case IF_STATEMENT_NODE:
         {
             // check condition
+            typeCheck(n->if_stmt_node.kids[0]);
             type_code cond_type = getType(n->if_stmt_node.kids[0]);
-            if (cond_type != BOOL)
+            if (cond_type != BOOL){
                 SEMANTIC_ERROR("ERROR: invalid type to condition");
+            }
             // check then_statement
             typeCheck(n->if_stmt_node.kids[1]);
             // check else_statement if exists

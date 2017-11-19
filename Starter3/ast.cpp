@@ -251,7 +251,7 @@ void ast_print(node *n, int indent) {
           ast_print(n->scope.statements, indent + 4);
           // cout << ")";
         }
-        cout << setw(indent) << ' ' << "leaving scope" << endl;
+        // cout << setw(indent) << ' ' << "leaving scope" << endl;
         symbol_stack.pop_back();
         break;
       }
