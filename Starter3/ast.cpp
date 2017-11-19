@@ -370,7 +370,7 @@ void ast_print(node *n, int indent) {
       {
         cout << setw(indent) << ' ' << "(ASSIGN ";
         // type of variable, can get from the symbol table
-        cout << type_name[getType(n)] << " ";
+        cout << type_name[getType(n->assignment_node.left)] << " ";
         // variable node
         ast_print(n->assignment_node.left);
         cout << " ";

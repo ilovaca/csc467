@@ -28,16 +28,6 @@ SYBL_T predefinedST = {
 
 std::vector<SYBL_T*> symbol_stack = {&predefinedST};
 
-// void addPredefinedSymbolTable() {
-//     SYBL_T* temp = new SYBL_T;
-//     struct symbol_attr s {.type = VEC4,
-//                             .predef = RESULT};
-//     // temp->insert(std::pair<std::string, struct symbol_attr>("gl_FragColor", s));
-//     temp->insert(std::pair<std::string, struct symbol_attr>("gl_FragColor", {.type = VEC4,
-//                             .predef = RESULT}));
-//     symbol_stack.push_back(temp);
-// }
-
 // traverse the tree and create symbol table 
 // for each declaration in the scope
 void buildSymbolTable(node * n) {
@@ -113,14 +103,15 @@ void buildSymbolTable(node * n) {
   }
 }
 
-type_code searchSymbolTable(const char* id) {
-  type_code ret = ERROR;
+std::pair<std::string, struct symbol_attr> searchSymbolTable(const char* id) {
+  std::pair<std::string, struct symbol_attr> ret("", {.type = ERROR, .predef = NONE});
+  // ret.type = ERROR;
   std::string key = id;
   for (auto rit = symbol_stack.rbegin(); rit != symbol_stack.rend(); ++rit) {
     auto it = (**rit).find(key);
     if (it != (**rit).end()){
       // found
-      ret = it->second.type;
+      ret = *it;
       return ret;
     }
   }

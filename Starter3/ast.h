@@ -111,6 +111,7 @@ struct node_ {
       char *ident;
       int index;
       type_code result_type;
+      predef_attr attr;
     } var_node;
     struct {
       int type; // name of the function

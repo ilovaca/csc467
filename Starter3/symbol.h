@@ -27,7 +27,8 @@ typedef enum{
 } type_code;
 
 typedef enum {
-    ATTRIBUTE = 0,
+    NONE = 0,
+    ATTRIBUTE,
     UNIFORM,
     RESULT,
     CONST_VAR
@@ -46,6 +47,6 @@ extern std::vector<SYBL_T*> symbol_stack;
 extern SYBL_T predefined_vars;
 // void addPredefinedSymbolTable();
 void buildSymbolTable(node *);
-type_code searchSymbolTable(const char* id);
+std::pair<std::string, struct symbol_attr> searchSymbolTable(const char* id);
 #endif
 

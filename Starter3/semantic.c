@@ -144,20 +144,6 @@ type_code deduceType(type_code a, type_code b, int op) {
     }
   return ret;
 }
-// type_code deduceType(type_code a, type_code b, int op) {
-//   // 4 cases, a, b both can be either scalar or vector
-//   type_code ret = ERROR;
-//   if (isVector(a) && isVector(b)) {
-
-//   } else if (!isVector(a) && isVector(b)) {
-
-//   } else if (isVector(a) && !isVector(b)) {
-
-//   } else {
-//     // !isVector(a) && !isVector(b)
-//   }
-//   return ret;
-// }
 
 // get the type of the expression rooted at n
 type_code getType(node *n) {
@@ -304,12 +290,12 @@ void typeCheck(node * n) {
             if (n->declaration_node.type == 2) {
                 if (n->declaration_node.kids[1]->kind != LITERAL_NODE
                     && n->declaration_node.kids[1]->kind != VAR_NODE) {
-                    SEMANTIC_ERROR("CONST variable not initialized with constant expression");
+                    SEMANTIC_ERROR("ERROR: CONST variable not initialized with constant expression");
                 }
                 else if (n->declaration_node.kids[1]->kind == VAR_NODE) {
                     std::string id = n->declaration_node.kids[1]->var_node.ident;
                     if (id != "gl_Light_Half" && id != "gl_Light_Ambient" && id != "gl_Material_Shininess") {
-                        SEMANTIC_ERROR("CONST variable not initialized with constant expression");
+                        SEMANTIC_ERROR("ERROR: CONST variable not initialized with constant expression");
                     }
                 }
             }
@@ -319,11 +305,12 @@ void typeCheck(node * n) {
       {
         /*VAR_NODE is a leaf*/
         // Check if variable is already declared
-        type_code ret = searchSymbolTable(n->var_node.ident);
-        // FIXME: is ivec3[1] of type INT or IVEC3?
+        auto entry = searchSymbolTable(n->var_node.ident);
+        type_code ret = entry.second.type;
         if (ret == ERROR) {
             SEMANTIC_ERROR("ERROR: symbol not found");
         }
+        n->var_node.attr = entry.second.predef;
         // If this variable is a vector indexing, check out of bound access
         if (n->var_node.type == 1) {
 
@@ -356,6 +343,11 @@ void typeCheck(node * n) {
         typeCheck(n->assignment_node.right);
         type_code lhs = getType(n->assignment_node.left);
         type_code rhs = getType(n->assignment_node.right);
+        // check read-only variables and CONST variable
+        predef_attr attr = n->assignment_node.left->var_node.attr;
+        if (attr == ATTRIBUTE || attr == UNIFORM || attr == CONST_VAR) {
+            SEMANTIC_ERROR("ERROR: cannot assign to read-only/constant variables");
+        }
         if (lhs != rhs) {
             // lhs and rhs not of same type
             SEMANTIC_ERROR("ERROR: in assignment, lhs and rhs not of the same type");
