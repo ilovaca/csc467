@@ -171,33 +171,8 @@ type_code getType(node *n) {
         ret = n->var_node.result_type;
         break;
       }
-    case ASSIGNMENT_NODE:
-      {
-        // TODO: consult symbol table
-        ret = searchSymbolTable(n->assignment_node.left->var_node.ident);
-        // if (ret == ERROR)
-        //   cout << "ERROR: symbol not found" << endl;
-        break;
-      }
     case BINARY_EXPRESSION_NODE:
       {
-        // TODO: deduce type
-        // the "resulting" type of this expression should 
-        // be of the base type, but not necessarily the same type
-        // get the type of two sub expressions
-        // type_code lhs, rhs;
-        // if (n->binary_expr.left) {
-        //   lhs = getType(n->binary_expr.left);
-        // }
-        // if (n->binary_expr.right) {
-        //   rhs = getType(n->binary_expr.right);
-        // }
-        // if (lhs == ERROR || rhs == ERROR) {
-        //   cout << "FATAL ERROR" << endl;
-        // }
-        // the result type of the final expression depends on the
-        // the sub expression and the type of operator
-        // ret = deduceType(lhs, rhs, n->binary_expr.op);
         ret = n->binary_expr.result_type;
         break;
       }
@@ -205,7 +180,7 @@ type_code getType(node *n) {
       {
         // TODO: the resulting type must be of
         // the type of the expression
-        ret = getType(n->unary_expr.expr);
+        ret = n->unary_expr.result_type;
         break;
       }
     case LITERAL_NODE:
@@ -215,7 +190,6 @@ type_code getType(node *n) {
       }
     case FUNCTION_NODE:
       {
-
         ret = n->function_node.result_type;
         break;
       }
@@ -429,8 +403,13 @@ void typeCheck(node * n) {
         // check args
         unsigned int num_args = 0;
         if (n->function_node.args) {
-            typeCheck(n->function_node.args);
-            num_args = n->function_node.args->arguments_node.args_type.size();
+            if (n->function_node.args->kind == ARGUMENTS_NODE) {
+                typeCheck(n->function_node.args);
+                num_args = n->function_node.args->arguments_node.args_type.size();
+            } else {
+                typeCheck(n->function_node.args);
+                num_args = 1;
+            }
         }
         // depending on the function, the return type can be different
         if (n->function_node.type == 0) {
@@ -462,7 +441,7 @@ void typeCheck(node * n) {
                 n->function_node.result_type = ERROR;
                 return;
             }
-            if (n->function_node.args->arguments_node.args_type[0] == VEC4) {
+            if (getType(n->function_node.args) == VEC4) {
                 n->function_node.result_type = VEC4;
             } else {
                 SEMANTIC_ERROR("ERROR: invalid arguments to lit()");
@@ -476,8 +455,8 @@ void typeCheck(node * n) {
                 n->function_node.result_type = ERROR;
                 return;
             }
-            if (n->function_node.args->arguments_node.args_type[0] == FLOAT 
-                || n->function_node.args->arguments_node.args_type[0] == INT) {
+            if (getType(n->function_node.args) == FLOAT 
+                || getType(n->function_node.args) == INT) {
                 n->function_node.result_type = FLOAT;
             } else {
                 SEMANTIC_ERROR("ERROR: invalid arguments types to rsq()");
@@ -495,8 +474,14 @@ void typeCheck(node * n) {
         unsigned int num_args = 0;
         // check args if exists
         if (n->constructor_node.arguments){
-            typeCheck(n->constructor_node.arguments);
-            num_args = n->constructor_node.arguments->arguments_node.args_type.size();
+            if (n->constructor_node.arguments->kind == ARGUMENTS_NODE) {
+                typeCheck(n->constructor_node.arguments);
+                num_args = n->constructor_node.arguments->arguments_node.args_type.size();
+            } else {
+                // only single expression
+                typeCheck(n->constructor_node.arguments);
+                num_args = 1;
+            }
         }
         if (num_args != (unsigned int)typeDimension(ctor_type)){
             SEMANTIC_ERROR("ERROR: invalid number of arguments to constructor");            
@@ -504,10 +489,18 @@ void typeCheck(node * n) {
             return;
         }
         // check if args is the same type
-        if (n->constructor_node.arguments){
-            for (type_code T : n->constructor_node.arguments->arguments_node.args_type) {
-                if (T != baseType(ctor_type)) {
-                    SEMANTIC_ERROR("ERROR: invalid arguments type to constructor");
+        if (num_args == 1) {
+            if (getType(n->constructor_node.arguments) != ctor_type){
+                SEMANTIC_ERROR("ERROR: invalid arguments type to constructor");
+                n->constructor_node.result_type = ERROR;
+            }
+        } else {
+            if (n->constructor_node.arguments) {
+                for (type_code T : n->constructor_node.arguments->arguments_node.args_type) {
+                    if (T != baseType(ctor_type)) {
+                        SEMANTIC_ERROR("ERROR: invalid arguments type to constructor");
+                        n->constructor_node.result_type = ERROR;
+                    }
                 }
             }
         }
