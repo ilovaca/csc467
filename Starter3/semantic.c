@@ -78,21 +78,23 @@ type_code deduceType(type_code a, type_code b, int op) {
             SEMANTIC_ERROR(msg.c_str());
             ret = ERROR;
         }
-        if (ret != ERROR) ret = a;
+        if (ret != ERROR) ret = BOOL;
     } else if (op == 4 || op == 5 || op == 6 || op ==7) {// "<", "<=", ">" and ">="
         if (isVector(a) || isVector(b)) {
             std::string msg = "ERROR: operand  to " 
                         + std::string(operator_name[op])
                         + " must be scalars";
             SEMANTIC_ERROR(msg.c_str());
+            ret = ERROR;
         }
         if (a != b) {
             std::string msg = "ERROR: operand type to " 
                         + std::string(operator_name[op])
                         + " does not match type";
             SEMANTIC_ERROR(msg.c_str());
+            ret = ERROR;
         }
-        if (ret != ERROR) ret = a;
+        if (ret != ERROR) ret = BOOL;
     } else if (op == 8 || op == 9){
         // "+" and "-"
         // the dimension must be the same
@@ -382,6 +384,7 @@ void typeCheck(node * n) {
     case UNARY_EXPRESION_NODE:
       {
         // the type of the expression
+        typeCheck(n->unary_expr.expr);
         n->unary_expr.result_type = getType(n->unary_expr.expr);
         break;
       }
