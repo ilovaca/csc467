@@ -21,9 +21,9 @@ SYBL_T predefinedST = {
     {"gl_Light_Ambient",        {.type = VEC4,.predef = UNIFORM}},
     {"gl_Material_Shininess",   {.type = VEC4,.predef = UNIFORM}},
 
-    {"gl_env1", {.type = VEC4,.predef = UNIFORM}},
-    {"gl_env2", {.type = VEC4,.predef = UNIFORM}},
-    {"gl_env3", {.type = VEC4,.predef = UNIFORM}},
+    {"env1", {.type = VEC4,.predef = UNIFORM}},
+    {"env2", {.type = VEC4,.predef = UNIFORM}},
+    {"env3", {.type = VEC4,.predef = UNIFORM}},
 };
 
 std::vector<SYBL_T*> symbol_stack = {&predefinedST};
