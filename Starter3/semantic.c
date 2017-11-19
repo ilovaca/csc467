@@ -5,6 +5,9 @@
 #include <cassert>
 #include "parser.tab.h"
 using namespace std;
+/********** For Checking Write-only Variables *********/
+bool insideIfElse = false;
+bool insideAssignStatement = false;
 
 extern const char* operator_name[];
 
@@ -213,26 +216,28 @@ int getNumArgs(node* n) {
     return args;
 }
 
-int getNumOfChildren(node *n) {
-    if (!n) return 0;
-    node_kind kind = n->kind;
-    switch(kind){
-        case ARGUMENTS_NODE: {
-            if (n->arguments_node.right) {
-                return 1 + getNumOfChildren(n->arguments_node.left);
-            } else {
-                return 0;
-            }
-            break;
-        }
-        default: {
-            // FIXME:
-            if (n) return 1;
-            else return 0;
-            break;
-        }
-    }
-}
+// int getNumOfChildren(node *n) {
+//     if (!n) return 0;
+//     node_kind kind = n->kind;
+//     switch(kind){
+//         case ARGUMENTS_NODE: {
+//             if (n->arguments_node.right) {
+//                 return 1 + getNumOfChildren(n->arguments_node.left);
+//             } else {
+//                 return 0;
+//             }
+//             break;
+//         }
+//         default: {
+//             // FIXME:
+//             if (n) return 1;
+//             else return 0;
+//             break;
+//         }
+//     }
+// }
+
+// write only variable can only appear in the assignment statement.
 
 void typeCheck(node * n) {
   // FIXME
@@ -287,7 +292,6 @@ void typeCheck(node * n) {
                     SEMANTIC_ERROR("ERROR: intializer does not match type of declaration");
                 }
             }
-            // TODO: insert to symbol table
             // if this decl is CONST qualified, check that
             // expression must be literal or UNIFORM variable
             if (n->declaration_node.type == 2) {
@@ -312,36 +316,48 @@ void typeCheck(node * n) {
         type_code ret = entry.second.type;
         if (ret == ERROR) {
             SEMANTIC_ERROR("ERROR: symbol not found");
+            ret = ERROR;
         }
+        // update attributes
         n->var_node.attr = entry.second.predef;
+        // check for write-only, can only be inside assignments
+        if (!insideAssignStatement && (n->var_node.attr == RESULT)) {
+            SEMANTIC_ERROR("ERROR: reading a Write-only variable");
+            ret = ERROR;
+        }
         // If this variable is a vector indexing, check out of bound access
         if (n->var_node.type == 1) {
 
           if (ret == IVEC2 || ret == BVEC2 || ret == VEC2) {
             if (n->var_node.index > 1) {
                 SEMANTIC_ERROR("ERROR: out of bound vector access");
+                ret = ERROR;
             }
           } else if (ret == IVEC3 || ret == BVEC3 || ret == VEC3) {
             if (n->var_node.index > 2) {
                 SEMANTIC_ERROR("ERROR: out of bound vector access");
+                ret = ERROR;
             }
           } else if (ret == IVEC4 || ret == BVEC4 || ret == VEC4) {
             if (n->var_node.index > 3) {
                 SEMANTIC_ERROR("ERROR: out of bound vector access");
+                ret = ERROR;
             }
           }
           // report the basetype of the vector
-          n->var_node.result_type = baseType(ret);
+          if (ret != ERROR) n->var_node.result_type = baseType(ret);
         } else {
             // update this var_node's data type
-            n->var_node.result_type = ret;
+            if (ret != ERROR) n->var_node.result_type = ret;
         }
         break;
       }
     case ASSIGNMENT_NODE:
       {
         // check lhs of assignment (variable)
+        insideAssignStatement = true;
         typeCheck(n->assignment_node.left);
+        insideAssignStatement = false;
         // check rhs of assignment (expression)
         typeCheck(n->assignment_node.right);
         type_code lhs = getType(n->assignment_node.left);
@@ -350,6 +366,12 @@ void typeCheck(node * n) {
         predef_attr attr = n->assignment_node.left->var_node.attr;
         if (attr == ATTRIBUTE || attr == UNIFORM || attr == CONST_VAR) {
             SEMANTIC_ERROR("ERROR: cannot assign to read-only/constant variables");
+        }
+        // check for write only variables
+        if (insideIfElse) {
+            if (n->assignment_node.left->var_node.attr == RESULT){
+                SEMANTIC_ERROR("ERROR: cannot assign to Result variables inside IF-ELSE statements");
+            }
         }
         if (lhs != rhs) {
             // lhs and rhs not of same type
@@ -520,11 +542,15 @@ void typeCheck(node * n) {
                 SEMANTIC_ERROR("ERROR: invalid type to condition");
             }
             // check then_statement
+            insideIfElse = true;
             typeCheck(n->if_stmt_node.kids[1]);
+            insideIfElse = false;
             // check else_statement if exists
             if (n->if_stmt_node.withElse) {
                 assert (n->if_stmt_node.kids[2] != NULL);
+                insideIfElse = true;
                 typeCheck(n->if_stmt_node.kids[2]);
+                insideIfElse = false;
             }
             break;
         }
