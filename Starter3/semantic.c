@@ -8,7 +8,7 @@ using namespace std;
 /********** For Checking Write-only Variables *********/
 bool insideIfElse = false;
 bool insideAssignStatement = false;
-
+node* cur_node = NULL;
 extern const char* operator_name[];
 
 bool isVector(type_code T) {
@@ -250,6 +250,7 @@ void typeCheck(node * n) {
   // FIXME
   // if (!n) return ERROR;
   if (!n) return;
+  cur_node = n;
   node_kind kind = n->kind;
   // type_code ret;
   switch(kind) {

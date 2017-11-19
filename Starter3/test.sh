@@ -141,6 +141,15 @@ declare -a passInputs=(
             }
         }
     }"
+    "{
+        vec4 v4; int x; int y; int z;
+        {
+            float xx; float yy; float zz; bool b;
+            x = 1; y = 2; z = 3;
+            xx = 1.1; yy = 2.2; zz = 3.3; x=1.234; xx=222; b = 123;
+            b = true;
+        }
+    }"
     #add more test cases here, enclose the test program in double quotes
 )
 

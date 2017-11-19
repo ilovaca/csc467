@@ -63,7 +63,8 @@ node *ast_allocate(node_kind kind, ...) {
   node *ast = (node *) malloc(sizeof(node));
   memset(ast, 0, sizeof *ast);
   ast->kind = kind;
-
+  ast->row = yyline;
+  ast->col = yycolumn;
   va_start(args, kind); 
 
   switch(kind) {
