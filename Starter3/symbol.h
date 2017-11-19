@@ -12,7 +12,6 @@ extern int yycolumn;
 extern node* cur_node;
 #define SEMANTIC_ERROR(x) { errorOccurred = 1; fprintf(traceFile, "[LINE %d, COL %d] %s\n", cur_node->row, cur_node->col, x); }
 
-// #include "ast.h"
 typedef enum{
   INT  = 0,
   IVEC2 = 1,

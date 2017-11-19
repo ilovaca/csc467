@@ -177,8 +177,6 @@ type_code getType(node *n) {
       }
     case UNARY_EXPRESION_NODE:
       {
-        // TODO: the resulting type must be of
-        // the type of the expression
         ret = n->unary_expr.result_type;
         break;
       }
@@ -223,36 +221,11 @@ int getNumArgs(node* n) {
     return args;
 }
 
-// int getNumOfChildren(node *n) {
-//     if (!n) return 0;
-//     node_kind kind = n->kind;
-//     switch(kind){
-//         case ARGUMENTS_NODE: {
-//             if (n->arguments_node.right) {
-//                 return 1 + getNumOfChildren(n->arguments_node.left);
-//             } else {
-//                 return 0;
-//             }
-//             break;
-//         }
-//         default: {
-//             // FIXME:
-//             if (n) return 1;
-//             else return 0;
-//             break;
-//         }
-//     }
-// }
 
-// write only variable can only appear in the assignment statement.
-
-void typeCheck(node * n) {
-  // FIXME
-  // if (!n) return ERROR;
+void semantic_check(node * n) {
   if (!n) return;
   cur_node = n;
   node_kind kind = n->kind;
-  // type_code ret;
   switch(kind) {
     case SCOPE_NODE:
         {
@@ -262,10 +235,10 @@ void typeCheck(node * n) {
             symbol_stack.push_back(n->scope.symbol_table);
             // check declaration and statements
             if (n->scope.declarations) {
-                typeCheck(n->scope.declarations);
+                semantic_check(n->scope.declarations);
             }
             if (n->scope.statements) {
-                typeCheck(n->scope.statements);
+                semantic_check(n->scope.statements);
             }
             // leaving current scope, pop it from stack
             symbol_stack.pop_back();
@@ -274,9 +247,9 @@ void typeCheck(node * n) {
     case DECLARATIONS_NODE:
         {
             if (n->declarations_node.left)
-                typeCheck(n->declarations_node.left);
+                semantic_check(n->declarations_node.left);
             if (n->declarations_node.right)
-                typeCheck(n->declarations_node.right);
+                semantic_check(n->declarations_node.right);
             break;
         }
     case DECLARATION_NODE:
@@ -297,7 +270,7 @@ void typeCheck(node * n) {
             }
             // check intializer (expression) type, if exits
             if (n->declaration_node.type == 1 || n->declaration_node.type == 2){
-                typeCheck(n->declaration_node.kids[1]);
+                semantic_check(n->declaration_node.kids[1]);
                 type_code init_type = getType(n->declaration_node.kids[1]);
                 type_code decl_type = getType(n->declaration_node.kids[0]);
                 if (init_type != decl_type) {
@@ -368,10 +341,10 @@ void typeCheck(node * n) {
       {
         // check lhs of assignment (variable)
         insideAssignStatement = true;
-        typeCheck(n->assignment_node.left);
+        semantic_check(n->assignment_node.left);
         insideAssignStatement = false;
         // check rhs of assignment (expression)
-        typeCheck(n->assignment_node.right);
+        semantic_check(n->assignment_node.right);
         type_code lhs = getType(n->assignment_node.left);
         type_code rhs = getType(n->assignment_node.right);
         // check read-only variables and CONST variable
@@ -399,16 +372,16 @@ void typeCheck(node * n) {
         if (n->binary_expr.left) {
             if (n->binary_expr.left->kind == BINARY_EXPRESSION_NODE) {
                 // build left binary expr node
-                typeCheck(n->binary_expr.left);
+                semantic_check(n->binary_expr.left);
                 lhs = getType(n->binary_expr.left);
             } else {
-                typeCheck(n->binary_expr.left);
+                semantic_check(n->binary_expr.left);
                 lhs = getType(n->binary_expr.left);
             }
         }
         // get rhs
         if (n->binary_expr.right) {
-            typeCheck(n->binary_expr.right);
+            semantic_check(n->binary_expr.right);
             rhs = getType(n->binary_expr.right);
         }
         // the result type of the final expression depends on the
@@ -419,7 +392,7 @@ void typeCheck(node * n) {
     case UNARY_EXPRESION_NODE:
       {
         // the type of the expression
-        typeCheck(n->unary_expr.expr);
+        semantic_check(n->unary_expr.expr);
         n->unary_expr.result_type = getType(n->unary_expr.expr);
         break;
       }
@@ -434,10 +407,10 @@ void typeCheck(node * n) {
         unsigned int num_args = 0;
         if (n->function_node.args) {
             if (n->function_node.args->kind == ARGUMENTS_NODE) {
-                typeCheck(n->function_node.args);
+                semantic_check(n->function_node.args);
                 num_args = n->function_node.args->arguments_node.args_type.size();
             } else {
-                typeCheck(n->function_node.args);
+                semantic_check(n->function_node.args);
                 num_args = 1;
             }
         }
@@ -499,17 +472,17 @@ void typeCheck(node * n) {
     case CONSTRUCTOR_NODE:
       {
         // constructor type
-        typeCheck(n->constructor_node.type);
+        semantic_check(n->constructor_node.type);
         type_code ctor_type = getType(n->constructor_node.type);
         unsigned int num_args = 0;
         // check args if exists
         if (n->constructor_node.arguments){
             if (n->constructor_node.arguments->kind == ARGUMENTS_NODE) {
-                typeCheck(n->constructor_node.arguments);
+                semantic_check(n->constructor_node.arguments);
                 num_args = n->constructor_node.arguments->arguments_node.args_type.size();
             } else {
                 // only single expression
-                typeCheck(n->constructor_node.arguments);
+                semantic_check(n->constructor_node.arguments);
                 num_args = 1;
             }
         }
@@ -540,28 +513,28 @@ void typeCheck(node * n) {
     case STATEMENTS_NODE:
         {
             if (n->statements_node.left)
-                typeCheck(n->statements_node.left);
+                semantic_check(n->statements_node.left);
             if (n->statements_node.right)
-                typeCheck(n->statements_node.right);
+                semantic_check(n->statements_node.right);
             break;
         }
     case IF_STATEMENT_NODE:
         {
             // check condition
-            typeCheck(n->if_stmt_node.kids[0]);
+            semantic_check(n->if_stmt_node.kids[0]);
             type_code cond_type = getType(n->if_stmt_node.kids[0]);
             if (cond_type != BOOL){
                 SEMANTIC_ERROR("ERROR: invalid type to condition");
             }
             // check then_statement
             insideIfElse = true;
-            typeCheck(n->if_stmt_node.kids[1]);
+            semantic_check(n->if_stmt_node.kids[1]);
             insideIfElse = false;
             // check else_statement if exists
             if (n->if_stmt_node.withElse) {
                 assert (n->if_stmt_node.kids[2] != NULL);
                 insideIfElse = true;
-                typeCheck(n->if_stmt_node.kids[2]);
+                semantic_check(n->if_stmt_node.kids[2]);
                 insideIfElse = false;
             }
             break;
@@ -573,17 +546,17 @@ void typeCheck(node * n) {
             if (n->arguments_node.left) {
                 if (n->arguments_node.left->kind == ARGUMENTS_NODE) {
                     // build left arguments node
-                    typeCheck(n->arguments_node.left);
+                    semantic_check(n->arguments_node.left);
                     n->arguments_node.args_type = n->arguments_node.left->arguments_node.args_type;
                 } else {
                     // left argument is an expression
-                    typeCheck(n->arguments_node.left);
+                    semantic_check(n->arguments_node.left);
                     n->arguments_node.args_type.push_back(getType(n->arguments_node.left));
                 }
             }
             // get current arguments
             if (n->arguments_node.right) {
-                typeCheck(n->arguments_node.right);
+                semantic_check(n->arguments_node.right);
                 n->arguments_node.args_type.push_back(getType(n->arguments_node.right));
             }
             break;
@@ -595,12 +568,3 @@ void typeCheck(node * n) {
     default: assert(false);
   }
 }
-
-int semantic_check() {
-    // 1. build symbol table
-    // buildSymbolTable(ast);
-    // 2. type check, and update resulting type in nodes
-    typeCheck(ast);
-  return 0; // failed checks
-}
-

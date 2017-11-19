@@ -73,9 +73,6 @@ node *ast_allocate(node_kind kind, ...) {
       ast->scope.declarations = va_arg(args, node*);
       ast->scope.statements = va_arg(args, node*);
       ast->scope.symbol_table = new SYBL_T;
-      // FIXME: enter this scope, push it to stack;
-      // cout << "entering scope" << endl;
-      // symbol_stack.push_back(ast->scope.symbol_table);
       break;
     }
   case DECLARATIONS_NODE:
@@ -219,18 +216,94 @@ node *ast_allocate(node_kind kind, ...) {
   return ast;
 }
 
-// this assumes that all kids have been freed
-void deleter(node * ast) {
-  assert(ast != NULL);
-  // assert(ast->numkids == 0);
-  // for (int i = 0; i < ast->numkids; i++) {
-  //   free(ast->kids[i]);
-  //   ast->kids[i] = NULL;
-  // }
-  free(ast);
-}
-
 void ast_free(node *n) {
+  if (n == NULL) return;
+  node_kind kind = n->kind;
+  switch(kind) {
+    case SCOPE_NODE:
+      {
+
+        ast_free(n->scope.declarations);
+        ast_free(n->scope.statements);
+        break;
+      }
+    case DECLARATIONS_NODE:
+      {
+          ast_free(n->declarations_node.left);
+          ast_free(n->declarations_node.right);
+          break;
+      }
+    case DECLARATION_NODE:
+      {
+        ast_free(n->declaration_node.kids[0]);
+        ast_free(n->declaration_node.kids[1]);
+        break;
+      }
+    case TYPE_NODE:
+      {
+        // leaf node
+        break;
+      }
+    case BINARY_EXPRESSION_NODE:
+      {
+          ast_free(n->binary_expr.left);
+          ast_free(n->binary_expr.right);
+        break;
+      }
+    case LITERAL_NODE:
+      {
+        // LITERAL node is a leaf
+        break;
+      }
+    case VAR_NODE:
+      {
+        // VAR_NODE is a leaf
+        break;
+      }
+    case FUNCTION_NODE:
+      {
+        ast_free(n->function_node.args);
+        break;
+      }
+    case CONSTRUCTOR_NODE:
+      {
+        ast_free(n->constructor_node.arguments);
+        break;
+      }
+    case STATEMENTS_NODE:
+      {
+          ast_free(n->statements_node.left);
+          ast_free(n->statements_node.right);
+        break;
+      }
+    case ASSIGNMENT_NODE:
+      {
+        ast_free(n->assignment_node.left);
+        ast_free(n->assignment_node.right);
+        break;
+      }
+    case IF_STATEMENT_NODE:
+      {
+        ast_free(n->if_stmt_node.kids[0]);
+        ast_free(n->if_stmt_node.kids[1]);
+        ast_free(n->if_stmt_node.kids[2]);
+        break;
+      }
+    case ARGUMENTS_NODE:
+      {
+        // print left first then print right
+        ast_free(n->arguments_node.left);
+        ast_free(n->arguments_node.right);
+        break;
+      }
+    case UNARY_EXPRESION_NODE:
+      {
+        ast_free(n->unary_expr.expr);
+        break;
+      }
+    default: break;
+  } //case
+  free(n);
 }
 
 void ast_print(node *n, int indent) {
@@ -239,7 +312,6 @@ void ast_print(node *n, int indent) {
   switch(kind) {
     case SCOPE_NODE:
       {
-        // cout << setw(indent) << ' ' << "entering scope" << endl;
         symbol_stack.push_back(n->scope.symbol_table);
         cout << setw(indent) << ' ' << "(SCOPE)" << endl;
         // descent to print subtrees
@@ -250,16 +322,13 @@ void ast_print(node *n, int indent) {
         if (n->scope.statements) {
           cout << setw(indent + 4) << ' ' << "(STATEMENTS ...)" << endl;
           ast_print(n->scope.statements, indent + 4);
-          // cout << ")";
         }
-        // cout << setw(indent) << ' ' << "leaving scope" << endl;
+        cout << setw(indent) << ' ' << "(END_SCOPE)" << endl;
         symbol_stack.pop_back();
         break;
       }
     case DECLARATIONS_NODE:
       {
-        // cout << setw(indent) << ' ' <<"(DECLARATIONS ...)" << endl;
-        // the ... may need to expand here.
         // descent to print each DECLARATION
         if (n->declarations_node.left)
           ast_print(n->declarations_node.left, indent);
@@ -378,14 +447,6 @@ void ast_print(node *n, int indent) {
         // then print the expression node
         ast_print(n->assignment_node.right, indent + 4);
         cout << ")" << endl;
-        // FIXME: the above statemetn has printed the assigning
-        // expression already. Do I need to traverse the subtree
-        // further, so that the expression itself is printed again.
-        // I guess yes
-        // if (n->assignment_node.left)
-        //   ast_print(n->assignment_node.left);
-        // if (n->assignment_node.right)
-        //   ast_print(n->assignment_node.right);
         break;
       }
     case IF_STATEMENT_NODE:
@@ -403,20 +464,10 @@ void ast_print(node *n, int indent) {
           ast_print(n->if_stmt_node.kids[2], indent + 4);
         }
         cout << setw(indent)<< ' ' << "ENDIF)" << endl;
-        // // print subtree
-        // if (n->if_stmt_node.withElse) {
-        //   ast_print(n->if_stmt_node.kids[0]);
-        //   ast_print(n->if_stmt_node.kids[1]);
-        //   ast_print(n->if_stmt_node.kids[2]);
-        // } else {
-        //   ast_print(n->if_stmt_node.kids[0]);
-        //   ast_print(n->if_stmt_node.kids[1]);
-        // }
         break;
       }
     case ARGUMENTS_NODE:
       {
-        // FIXME: this order may need to be reversed?
         // print left first then print right
         if (n->arguments_node.left)
           ast_print(n->arguments_node.left);
@@ -442,142 +493,5 @@ void ast_print(node *n, int indent) {
       }
     default: break;
   }
-}
-
-void ast_traverse(node * n, bool postorder, void (*fp)(node * n)) {
-  if (n == NULL) {
-    return;
-  }
-  node_kind kind = n->kind;
-  if (!postorder) {
-    if (fp)
-      fp(n);
-  }
-  // do post order traversal depending on the type of current node
-  switch(kind) {
-    case SCOPE_NODE:
-      {
-        ast_traverse(n->scope.declarations);
-        ast_traverse(n->scope.statements);
-        break;
-      }
-    case DECLARATIONS_NODE:
-      {
-        if (n->declarations_node.left)
-          ast_traverse(n->declarations_node.left);
-        if (n->declarations_node.right)
-          ast_traverse(n->declarations_node.right);
-        break;
-      }
-    case DECLARATION_NODE:
-      {
-        if (n->declaration_node.type == 0) {
-          if (n->declaration_node.kids[0]) {
-            ast_traverse(n->declaration_node.kids[0]);
-          }
-        } else if (n->declaration_node.type == 1 
-              || n->declaration_node.type == 2) {
-          if (n->declaration_node.kids[0]) {
-            ast_traverse(n->declaration_node.kids[0]);
-          }
-          if (n->declaration_node.kids[1]) {
-            ast_traverse(n->declaration_node.kids[1]);
-          }
-        }
-        break;
-      }
-    case TYPE_NODE:
-      {
-        // leaf node
-        break;
-      }
-    case BINARY_EXPRESSION_NODE:
-      {
-        if (n->binary_expr.left)
-          ast_traverse(n->binary_expr.left);
-        if (n->binary_expr.right)
-          ast_traverse(n->binary_expr.right);
-        break;
-      }
-    case LITERAL_NODE:
-      {
-        // LITERAL node is a leaf
-        break;
-      }
-    case VAR_NODE:
-      {
-        // VAR_NODE is a leaf
-        break;
-      }
-    case FUNCTION_NODE:
-      {
-        if (n->function_node.args)
-          ast_traverse(n->function_node.args);
-        break;
-      }
-    case CONSTRUCTOR_NODE:
-      {
-        if (n->constructor_node.type)
-          ast_traverse(n->constructor_node.type);
-        if (n->constructor_node.arguments)
-          ast_traverse(n->constructor_node.arguments);
-        break;
-      }
-    case STATEMENTS_NODE:
-      {
-        if (n->statements_node.left)
-          ast_traverse(n->statements_node.left);
-        if (n->statements_node.right)
-          ast_traverse(n->statements_node.right);
-        break;
-      }
-    case ASSIGNMENT_NODE:
-      {
-        if (n->assignment_node.left)
-          ast_traverse(n->assignment_node.left);
-        if (n->assignment_node.right)
-          ast_traverse(n->assignment_node.right);
-        break;
-      }
-    case IF_STATEMENT_NODE:
-      {
-        if (n->if_stmt_node.withElse) {
-          ast_traverse(n->if_stmt_node.kids[0]);
-          ast_traverse(n->if_stmt_node.kids[1]);
-          ast_traverse(n->if_stmt_node.kids[2]);
-        } else {
-          ast_traverse(n->if_stmt_node.kids[0]);
-          ast_traverse(n->if_stmt_node.kids[1]);
-        }
-        break;
-      }
-    case ARGUMENTS_NODE:
-      {
-        if (n->arguments_node.left)
-          ast_traverse(n->arguments_node.left);
-        if (n->arguments_node.right)
-          ast_traverse(n->arguments_node.right);
-        break;
-      }
-    case UNARY_EXPRESION_NODE:
-      {
-        if (n->unary_expr.expr)
-          ast_traverse(n->unary_expr.expr);
-        break;
-      }
-    default: break;
-  }
-  if (postorder){
-    if (fp)
-      fp(n);
-  }
-}
-
-void ast_postorder(node * ast, void (*f)(node * n)) {
-  ast_traverse(ast, true, f);
-}
-
-void ast_preorder(node * ast, void (*f)(node * n)) {
-  ast_traverse(ast, false, f);
 }
 
