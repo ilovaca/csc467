@@ -399,11 +399,13 @@ void typeCheck(node * n) {
                 typeCheck(n->binary_expr.left);
                 lhs = getType(n->binary_expr.left);
             } else {
+                typeCheck(n->binary_expr.left);
                 lhs = getType(n->binary_expr.left);
             }
         }
         // get rhs
         if (n->binary_expr.right) {
+            typeCheck(n->binary_expr.right);
             rhs = getType(n->binary_expr.right);
         }
         // the result type of the final expression depends on the
