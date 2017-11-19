@@ -3,6 +3,7 @@
 #include "common.h"
 #include <iostream>
 #include <cassert>
+#include "parser.tab.h"
 using namespace std;
 
 extern const char* operator_name[];

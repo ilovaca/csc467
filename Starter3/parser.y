@@ -53,6 +53,7 @@ enum {
  *    3. Make the %type declarations for the language non-terminals, utilizing
  *       the fields of the union as well.
  ***********************************************************************/
+%locations
 
 %{
 #define YYDEBUG 1

@@ -5,7 +5,9 @@
 #include <vector>
 #include <iostream>
 #include "common.h"
-#define SEMANTIC_ERROR(x) { errorOccurred = 1;fprintf(traceFile, "%s\n", x);std::cout << x << std::endl; }
+extern int yyline;
+extern int yycolumn;
+#define SEMANTIC_ERROR(x) { errorOccurred = 1; fprintf(traceFile, "[LINE %d, COL %d] %s\n", yyline, yycolumn, x); }
 
 // #include "ast.h"
 struct node_;

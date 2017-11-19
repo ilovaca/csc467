@@ -28,6 +28,10 @@ int ParseInt(void);
 int ParseFloat(void);
 int ParseIdent(void);
 int yyline = 1;
+int yycolumn = 1;
+#define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno; \
+    yylloc.first_column = yycolumn; yylloc.last_column = yycolumn+yyleng-1; \
+    yycolumn += yyleng;
 
 %}
 %option noyywrap
@@ -37,7 +41,7 @@ int yyline = 1;
 "/*"                          { if(!ParseComment()) { yyterminate(); } }
 
 [ \t]                         { }
-\r?\n                         { yyline++; }
+\r?\n                         { yyline++; yycolumn = 1;}
 <<EOF>>                       { yyterminate(); }
 
 [+\-*/\^]                     { yOUT(yytext[0]); }
@@ -109,6 +113,7 @@ int ParseComment(void) {
     c2 = yyinput();
     if ('\n' == c1 && EOF != c2) {
       yyline++;
+      yycolumn = 1;
     }
   }
   return 1;
