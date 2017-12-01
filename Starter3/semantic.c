@@ -765,7 +765,7 @@ string codegen(node * n, int reg_id = 0) {
         codegen(n->binary_expr.right, reg_id + 2);
         auto reg = alloc_reg(reg_id);
         if (!reg.empty()) {
-            out << ";" << endl;
+            out << reg << ";" << endl;
         }
         // depends on the operation type...
         switch(n->binary_expr.op){
@@ -822,7 +822,7 @@ string codegen(node * n, int reg_id = 0) {
         //
         auto reg = alloc_reg(reg_id);
         if (!reg.empty()) {
-            out << ";" << endl;
+            out <<reg  << ";" << endl;
         }
         int op = n->unary_expr.op;
         if (op == 0) {
@@ -841,8 +841,9 @@ string codegen(node * n, int reg_id = 0) {
         // out << "PARAM " << "tempVar" << reg_id  << " = ";
         auto reg = alloc_reg(reg_id);
         if (!reg.empty()) {
-            out << ";" << endl;
-        }        out << "MOV " << "tempVar" << reg_id << ", ";
+            out << reg << ";" << endl;
+        }        
+        out << "MOV " << "tempVar" << reg_id << ", ";
         if (n->literal.type == INT) {
             // INT type is signified by 3 zeros 
             out << "{ " << n->literal.ival << ", 0, 0, 0}" << ";"<< endl;
@@ -862,7 +863,7 @@ string codegen(node * n, int reg_id = 0) {
         codegen(n->function_node.args, reg_id + 1);
         auto reg = alloc_reg(reg_id);
         if (!reg.empty()) {
-            out << ";" << endl;
+            out << reg << ";" << endl;
         }
         // depending on the function, the return type can be different
         if (n->function_node.type == 0) {
@@ -896,7 +897,7 @@ string codegen(node * n, int reg_id = 0) {
             codegen(n->constructor_node.arguments, reg_id + 1);
             auto reg = alloc_reg(reg_id);
             if (!reg.empty()) {
-                out << ";" << endl;
+                out << reg << ";" << endl;
             }
             std::string reg_name;
             reg_name = getRegName(n->constructor_node.arguments);
@@ -907,7 +908,7 @@ string codegen(node * n, int reg_id = 0) {
             // destination
             auto reg = alloc_reg(reg_id);
             if (!reg.empty()) {
-                out << ";" << endl;
+                out << reg << ";" << endl;
             }
             auto arg = n->constructor_node.arguments;
             for (int i = num_args - 1; i != 0; i--) {
