@@ -624,6 +624,10 @@ std::string getRegName(node * n) {
             ret = n->literal.reg_name;
             break;
         }
+        case CONSTRUCTOR_NODE:{
+            ret = n->constructor_node.reg_name;
+            break;
+        }
         default: assert(false);
     }
     return ret;
@@ -669,7 +673,6 @@ string codegen(node * n, int reg_id = 0) {
     case DECLARATION_NODE:
         {
             std::string var_name = n->declaration_node.ident;
-            // out << "TEMP " << var_name << endl;
             out << alloc_reg(var_name) << endl;
             // code gen for expression if it exists
             if (n->declaration_node.type == 1 || n->declaration_node.type == 2){
@@ -681,7 +684,12 @@ string codegen(node * n, int reg_id = 0) {
         }
     case VAR_NODE:
       {
-        n->var_node.reg_name = (n->var_node.ident);
+        if (n->var_node.type == 0) {
+            // scalar
+            n->var_node.reg_name = n->var_node.ident;
+        } else {
+            n->var_node.reg_name = string(n->var_node.ident) + string(".") + index[n->var_node.index];
+        }
 
         // return n->var_node.reg_name;
         break;
@@ -690,8 +698,9 @@ string codegen(node * n, int reg_id = 0) {
       {
         // check lhs of assignment (variable)
         insideAssignStatement = true;
-        // codegen(n->assignment_node.left, reg_id);
-        auto var = n->assignment_node.left->var_node.ident;
+        codegen(n->assignment_node.left, reg_id);
+        // auto var = n->assignment_node.left->var_node.ident;
+        auto var = getRegName( n->assignment_node.left);
         insideAssignStatement = false;
         // check rhs of assignment (expression)
         codegen(n->assignment_node.right, reg_id );
@@ -865,6 +874,7 @@ string codegen(node * n, int reg_id = 0) {
             //     }
             // }
         }
+        n->constructor_node.reg_name = "tempVar" + to_string(reg_id);
         break;
       }
     case STATEMENTS_NODE:

@@ -126,7 +126,8 @@ struct node_ {
       node* type; //type_node
       node* arguments;
       type_code result_type;
-      std::vector<std::string> reg_name;
+      // std::vector<std::string> reg_name;
+      std::string reg_name;
     } constructor_node;
     struct {
       node* left; // more args...
