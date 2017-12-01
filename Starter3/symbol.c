@@ -8,9 +8,9 @@
 using namespace std;
 
 SYBL_T predefinedST = {
-    {"gl_FragColor", {.type = VEC4,.predef = RESULT}},
-    {"gl_FragDepth", {.type = BOOL,.predef = RESULT}},
-    {"gl_FragCoord", {.type = VEC4,.predef = RESULT}},
+    {"gl_FragColor", {.type = VEC4,.predef = NONE}},
+    {"gl_FragDepth", {.type = BOOL,.predef = NONE}},
+    {"gl_FragCoord", {.type = VEC4,.predef = NONE}},
 
     {"gl_TexCoord",     {.type = VEC4,.predef = ATTRIBUTE}},
     {"gl_Color",        {.type = VEC4,.predef = ATTRIBUTE}},

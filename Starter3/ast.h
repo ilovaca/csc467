@@ -75,6 +75,7 @@ struct node_ {
     struct {
       bool withElse;
       node *kids[3];
+      std::string cond;
     } if_stmt_node;
     struct {
       int type; // 0 is non-initialized, 1 is with initializing expresion

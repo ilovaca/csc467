@@ -632,6 +632,10 @@ std::string getRegName(node * n) {
 
 const char index[4] = {'x', 'y', 'z', 'w'};
 
+
+string if_cond_reg = "";
+bool insideTHEN = false;
+bool insideELSE = false;
 string codegen(node * n, int reg_id = 0) {
   if (!n) return "";
   cur_node = n;
@@ -671,14 +675,15 @@ string codegen(node * n, int reg_id = 0) {
             if (n->declaration_node.type == 1 || n->declaration_node.type == 2){
                 codegen(n->declaration_node.kids[1], reg_id);
                 // initialize the declaration 
-                out << "MOV " << var_name << ", tempVar" << reg_id << endl;
+                out << "MOV " << var_name << " , " << getRegName(n->declaration_node.kids[1]) << endl;
             }
             break;
         }
     case VAR_NODE:
       {
         n->var_node.reg_name = (n->var_node.ident);
-        return n->var_node.reg_name;
+
+        // return n->var_node.reg_name;
         break;
       }
     case ASSIGNMENT_NODE:
@@ -691,32 +696,23 @@ string codegen(node * n, int reg_id = 0) {
         // check rhs of assignment (expression)
         codegen(n->assignment_node.right, reg_id );
         // check the type of variable
-        if (n->assignment_node.left->var_node.type == 0) {
-            // scalar assignment
-            out << "MOV " << var << ", tempVar" << reg_id << endl;
+        if (!insideIfElse) {
+            if (n->assignment_node.left->var_node.type == 0) {
+                // scalar assignment
+                out << "MOV " << var << ", tempVar" << reg_id << endl;
+            } else {
+                // vector indexing 
+                out << "MOV " << var << ", tempVar" << reg_id << "." << index[n->assignment_node.left->var_node.index] << endl;
+            }            
         } else {
-            // vector indexing 
-            char c = 0;
-            switch(n->assignment_node.left->var_node.index) {
-                case 0: {
-                    c = 'x';
-                    break;
-                }
-                case 1: {
-                    c = 'y';
-                    break;
-                }
-                case 2: {
-                    c = 'z';
-                    break;
-                }
-                case 3: {
-                    c = 'w';
-                    break;
-                }
-                default: assert(false);
+            // inside if-else, do CMP
+            if (insideTHEN) {
+                // THEN statement
+                out << "CMP " << var << ", " << if_cond_reg << ", " << var << ", tempVar" << reg_id << endl;
+            } else {
+                assert(insideELSE);
+                out << "CMP " << var << ", " << if_cond_reg << ", tempVar" << reg_id  << " , " << var << endl;
             }
-            out << "MOV " << var << ", tempVar" << reg_id << "." << c << endl;
         }
         break;
       }
@@ -804,15 +800,6 @@ string codegen(node * n, int reg_id = 0) {
       }
     case FUNCTION_NODE:
       {
-        // if (n->function_node.args) {
-        //     if (n->function_node.args->kind == ARGUMENTS_NODE) {
-        //         // two arguments
-        //         codegen(n->function_node.args, reg_id + 1/*, reg_id + 2*/);
-        //     } else {
-        //         // only one argument
-        //         codegen(n->function_node.args, reg_id);
-        //     }
-        // }
         codegen(n->function_node.args, reg_id + 1);
         out << alloc_reg(reg_id) << endl;
         // depending on the function, the return type can be different
@@ -883,28 +870,31 @@ string codegen(node * n, int reg_id = 0) {
     case STATEMENTS_NODE:
         {
             if (n->statements_node.left)
-                codegen(n->statements_node.left);
+                codegen(n->statements_node.left, reg_id);
             if (n->statements_node.right)
-                codegen(n->statements_node.right);
+                codegen(n->statements_node.right, reg_id);
             break;
         }
     case IF_STATEMENT_NODE:
         {
-            // check condition
-            codegen(n->if_stmt_node.kids[0]);
-            type_code cond_type = getType(n->if_stmt_node.kids[0]);
-            if (cond_type != BOOL){
-                SEMANTIC_ERROR("ERROR: invalid type to condition");
-            }
-            // check then_statement
+            // generate condition
+            codegen(n->if_stmt_node.kids[0], reg_id);
+            // the condition register
+            // out << alloc_reg(reg_id) << endl;
+            if_cond_reg = getRegName(n->if_stmt_node.kids[0]);
+            // then_statement
             insideIfElse = true;
-            codegen(n->if_stmt_node.kids[1]);
+            insideTHEN = true;
+            codegen(n->if_stmt_node.kids[1], reg_id + 1);
             insideIfElse = false;
-            // check else_statement if exists
+            insideTHEN = false;
+            // gen else_statement if exists
             if (n->if_stmt_node.withElse) {
                 assert (n->if_stmt_node.kids[2] != NULL);
                 insideIfElse = true;
-                codegen(n->if_stmt_node.kids[2]);
+                insideELSE = true;
+                codegen(n->if_stmt_node.kids[2], reg_id + 2);
+                insideELSE = false;
                 insideIfElse = false;
             }
             break;
