@@ -706,13 +706,14 @@ string codegen(node * n, int reg_id = 0) {
         codegen(n->assignment_node.right, reg_id );
         // check the type of variable
         if (!insideIfElse) {
-            if (n->assignment_node.left->var_node.type == 0) {
+            // if (n->assignment_node.left->var_node.type == 0) {
                 // scalar assignment
-                out << "MOV " << var << ", tempVar" << reg_id << endl;
-            } else {
+                // out << "MOV " << var << ", tempVar" << reg_id << endl;
+            out << "MOV " << var << ", " << getRegName(n->assignment_node.right) << endl;
+            // } else {
                 // vector indexing 
-                out << "MOV " << var << ", tempVar" << reg_id << "." << index[n->assignment_node.left->var_node.index] << endl;
-            }            
+                // out << "MOV " << var << ", tempVar" << reg_id << "." << index[n->assignment_node.left->var_node.index] << endl;
+            // }  
         } else {
             // inside if-else, do CMP
             if (insideTHEN) {
