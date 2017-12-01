@@ -765,7 +765,7 @@ string codegen(node * n, int reg_id = 0) {
       {
         codegen(n->binary_expr.left, reg_id + 1);
         codegen(n->binary_expr.right, reg_id + 2);
-        out << alloc_reg(reg_id) << endl;
+        out << alloc_reg(reg_id) << ";" << endl;
         // depends on the operation type...
         switch(n->binary_expr.op){
             case 0: {
@@ -819,7 +819,7 @@ string codegen(node * n, int reg_id = 0) {
       {
         codegen(n->unary_expr.expr, reg_id + 1);
         //
-        out << alloc_reg(reg_id) << endl;
+        out << alloc_reg(reg_id) << ";" << endl;
         int op = n->unary_expr.op;
         if (op == 0) {
             // "-" expr = 0 SUB expr
@@ -885,7 +885,7 @@ string codegen(node * n, int reg_id = 0) {
         if (n->constructor_node.arguments->kind != ARGUMENTS_NODE) {
             // only one argument
             codegen(n->constructor_node.arguments, reg_id + 1);
-            out << alloc_reg(reg_id) << endl; 
+            out << alloc_reg(reg_id) << ";" << endl; 
             std::string reg_name;
             reg_name = getRegName(n->constructor_node.arguments);
             out << "MOV tempVar" << reg_id << ".x" << ", " << reg_name << ";"<< endl;
@@ -893,7 +893,7 @@ string codegen(node * n, int reg_id = 0) {
             // multiple args
             auto num_args = getNumArgs(n->constructor_node.arguments);
             // destination
-            out << alloc_reg(reg_id) << endl;
+            out << alloc_reg(reg_id) << ";" << endl;
             auto arg = n->constructor_node.arguments;
             for (int i = num_args - 1; i != 0; i--) {
                 // reg_id++;
