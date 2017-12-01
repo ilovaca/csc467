@@ -584,14 +584,12 @@ void codegen(){
     out << "END"<< endl;
     out.close();
 }
-int reg_bound = -1;
 std::set<int> reg_set;
 
 std::string alloc_reg(int reg_id) {
     if (reg_set.find(reg_id) == reg_set.end()) {
-        // reg_bound = reg_id;
         reg_set.insert(reg_id);
-        return "TEMP tempVar" + to_string( reg_id);
+        return "TEMP tempVar" + to_string(reg_id);
     } else {
         return "";
     }
@@ -765,7 +763,10 @@ string codegen(node * n, int reg_id = 0) {
       {
         codegen(n->binary_expr.left, reg_id + 1);
         codegen(n->binary_expr.right, reg_id + 2);
-        out << alloc_reg(reg_id) << ";" << endl;
+        auto reg = alloc_reg(reg_id);
+        if (!reg.empty()) {
+            out << ";" << endl;
+        }
         // depends on the operation type...
         switch(n->binary_expr.op){
             case 0: {
@@ -819,7 +820,10 @@ string codegen(node * n, int reg_id = 0) {
       {
         codegen(n->unary_expr.expr, reg_id + 1);
         //
-        out << alloc_reg(reg_id) << ";" << endl;
+        auto reg = alloc_reg(reg_id);
+        if (!reg.empty()) {
+            out << ";" << endl;
+        }
         int op = n->unary_expr.op;
         if (op == 0) {
             // "-" expr = 0 SUB expr
@@ -835,8 +839,10 @@ string codegen(node * n, int reg_id = 0) {
       {
         // literal is a scalar
         // out << "PARAM " << "tempVar" << reg_id  << " = ";
-        out << alloc_reg(reg_id) << ";"<< endl;
-        out << "MOV " << "tempVar" << reg_id << ", ";
+        auto reg = alloc_reg(reg_id);
+        if (!reg.empty()) {
+            out << ";" << endl;
+        }        out << "MOV " << "tempVar" << reg_id << ", ";
         if (n->literal.type == INT) {
             // INT type is signified by 3 zeros 
             out << "{ " << n->literal.ival << ", 0, 0, 0}" << ";"<< endl;
@@ -854,7 +860,10 @@ string codegen(node * n, int reg_id = 0) {
     case FUNCTION_NODE:
       {
         codegen(n->function_node.args, reg_id + 1);
-        out << alloc_reg(reg_id) << endl;
+        auto reg = alloc_reg(reg_id);
+        if (!reg.empty()) {
+            out << ";" << endl;
+        }
         // depending on the function, the return type can be different
         if (n->function_node.type == 0) {
             // DP3 has two args
@@ -885,7 +894,10 @@ string codegen(node * n, int reg_id = 0) {
         if (n->constructor_node.arguments->kind != ARGUMENTS_NODE) {
             // only one argument
             codegen(n->constructor_node.arguments, reg_id + 1);
-            out << alloc_reg(reg_id) << ";" << endl; 
+            auto reg = alloc_reg(reg_id);
+            if (!reg.empty()) {
+                out << ";" << endl;
+            }
             std::string reg_name;
             reg_name = getRegName(n->constructor_node.arguments);
             out << "MOV tempVar" << reg_id << ".x" << ", " << reg_name << ";"<< endl;
@@ -893,7 +905,10 @@ string codegen(node * n, int reg_id = 0) {
             // multiple args
             auto num_args = getNumArgs(n->constructor_node.arguments);
             // destination
-            out << alloc_reg(reg_id) << ";" << endl;
+            auto reg = alloc_reg(reg_id);
+            if (!reg.empty()) {
+                out << ";" << endl;
+            }
             auto arg = n->constructor_node.arguments;
             for (int i = num_args - 1; i != 0; i--) {
                 // reg_id++;
