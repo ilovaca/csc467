@@ -87,6 +87,7 @@ struct node_ {
       int op;
       node *expr; // !/- expr
       type_code result_type;
+      std::string reg_name;
     } unary_expr;
 
     struct {
@@ -94,6 +95,7 @@ struct node_ {
       node *left; // more expressions...
       node *right; // current expression
       type_code result_type;
+      std::string reg_name;
     } binary_expr;
     // data types
     struct {

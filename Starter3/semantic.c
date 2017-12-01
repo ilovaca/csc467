@@ -632,6 +632,9 @@ std::string getRegName(node * n) {
             ret = n->function_node.reg_name;
             break;
         }
+        case BINARY_EXPRESSION_NODE: {
+            ret = n->binary_expr.reg_name;
+        }
         default: assert(false);
     }
     return ret;
@@ -722,10 +725,10 @@ string codegen(node * n, int reg_id = 0) {
             // inside if-else, do CMP
             if (insideTHEN) {
                 // THEN statement
-                out << "CMP " << var << ", " << if_cond_reg << ", " << var << ", tempVar" << reg_id << endl;
+                out << "CMP " << var << ", " << if_cond_reg << ", " << var << ", " << getRegName(n->assignment_node.right) << endl;
             } else {
                 assert(insideELSE);
-                out << "CMP " << var << ", " << if_cond_reg << ", tempVar" << reg_id  << " , " << var << endl;
+                out << "CMP " << var << ", " << if_cond_reg << ", " << getRegName(n->assignment_node.right)  << " , " << var << endl;
             }
         }
         break;
@@ -746,18 +749,24 @@ string codegen(node * n, int reg_id = 0) {
             }
             case 8: {
                 // +, -, *
-                out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                    << ", tempVar" << reg_id + 2 << endl;
+                // out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                //     << ", tempVar" << reg_id + 2 << endl;
+                out << "ADD " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right) << endl;
                 break;
             }
             case 9: {
-                out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                    << ", tempVar" << reg_id + 2 << endl;
+                // out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                //     << ", tempVar" << reg_id + 2 << endl;
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right) << endl;
                 break;
             }
             case 10: {
-                out << "MUL " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                    << ", tempVar" << reg_id + 2 << endl;
+                // out << "MUL " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                //     << ", tempVar" << reg_id + 2 << endl;
+                out << "MUL " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right) << endl;
                 break;
             }
             case 11: {
@@ -775,6 +784,7 @@ string codegen(node * n, int reg_id = 0) {
             }
             default: break;
         }
+        n->binary_expr.reg_name = "tempVar" + to_string(reg_id);
         break;
       }
     case UNARY_EXPRESION_NODE:
