@@ -685,7 +685,7 @@ string codegen(node * n, int reg_id = 0) {
     case DECLARATION_NODE:
         {
             std::string var_name = n->declaration_node.ident;
-            out << alloc_reg(var_name) << endl;
+            out << alloc_reg(var_name) << ";" << endl;
             // code gen for expression if it exists
             if (n->declaration_node.type == 1 || n->declaration_node.type == 2){
                 codegen(n->declaration_node.kids[1], reg_id);
