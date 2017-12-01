@@ -636,6 +636,10 @@ std::string getRegName(node * n) {
             ret = n->binary_expr.reg_name;
             break;
         }
+        case UNARY_EXPRESION_NODE: {
+            ret = n->unary_expr.reg_name;
+            break;
+        }
         default: assert(false);
     }
     return ret;
@@ -692,11 +696,41 @@ string codegen(node * n, int reg_id = 0) {
         }
     case VAR_NODE:
       {
+        std::string ident = n->var_node.ident;
+        if (ident == "gl_FragColor") {
+            ident = "result.color";
+        } else if (ident == "gl_FragDepth") {
+            ident = "result.depth";
+        } else if (ident == "gl_FragCoord") {
+            ident = "fragment.position";
+        } else if (ident == "gl_TexCoord") {
+            ident = "fragment.texcoord";
+        } else if (ident == "gl_Color") {
+            ident = "fragment.color";
+        } else if (ident == "gl_Secondary") {
+            ident = "fragment.color.secondary";
+        } else if (ident == "gl_FogFragCoord") {
+            ident = "fragment.fogcoord";
+        } else if (ident == "gl_Light_Half") {
+            ident = "state.light[0].half";
+        } else if (ident == "gl_Light_Ambient"){
+            ident = "state.lightmodel.ambient";
+        } else if (ident == "gl_Material_Shininess") {
+            ident = "state.material.shininess";
+        } else if (ident == "env1") {
+            ident = "program.env[1]";
+        } else if (ident == "env2") {
+            ident = "program.env[2]";
+        } else if (ident == "env3") {
+            ident = "program.env[3]";
+        } else {
+
+        }
         if (n->var_node.type == 0) {
             // scalar
-            n->var_node.reg_name = n->var_node.ident;
+            n->var_node.reg_name = ident;
         } else {
-            n->var_node.reg_name = string(n->var_node.ident) + string(".") + index[n->var_node.index];
+            n->var_node.reg_name = ident + string(".") + index[n->var_node.index];
         }
 
         // return n->var_node.reg_name;
@@ -794,6 +828,7 @@ string codegen(node * n, int reg_id = 0) {
         } else {
             // "!"
         }
+        n->unary_expr.reg_name = "tempVar" + to_string(reg_id);
         break;
       }
     case LITERAL_NODE:
@@ -874,15 +909,6 @@ string codegen(node * n, int reg_id = 0) {
                     break;
                 }
             }
-            // auto regs = n->constructor_node.arguments->arguments_node.reg_name;
-            // char c = 'x';
-            // for (int i = 0; i < regs.size(); i++, c++) {
-            //     if (i == 3) {
-            //         out << "MOV tempVar" << reg_id <<  "." << 'w' << ", " << regs[i] << endl;
-            //     } else {
-            //         out << "MOV tempVar" << reg_id <<  "." << c << ", " << regs[i] << endl;
-            //     }
-            // }
         }
         n->constructor_node.reg_name = "tempVar" + to_string(reg_id);
         break;
