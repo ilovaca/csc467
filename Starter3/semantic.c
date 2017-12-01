@@ -628,6 +628,10 @@ std::string getRegName(node * n) {
             ret = n->constructor_node.reg_name;
             break;
         }
+        case FUNCTION_NODE: {
+            ret = n->function_node.reg_name;
+            break;
+        }
         default: assert(false);
     }
     return ret;
@@ -713,7 +717,7 @@ string codegen(node * n, int reg_id = 0) {
             // } else {
                 // vector indexing 
                 // out << "MOV " << var << ", tempVar" << reg_id << "." << index[n->assignment_node.left->var_node.index] << endl;
-            // }  
+            // }
         } else {
             // inside if-else, do CMP
             if (insideTHEN) {
@@ -831,6 +835,7 @@ string codegen(node * n, int reg_id = 0) {
             // out << "RSQ " << " tempVar" << reg_id << ", tempVar" << reg_id + 1 << endl;
             out << "RSQ " << " tempVar" << reg_id << "," << getRegName(n->function_node.args) << endl;
         }
+        n->function_node.reg_name = "tempVar" + to_string(reg_id);
         break;
       }
     case CONSTRUCTOR_NODE:

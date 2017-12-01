@@ -121,6 +121,7 @@ struct node_ {
       int type; // name of the function
       node* args; // arguments
       type_code result_type;
+      std::string reg_name;
     } function_node;
     struct {
       node* type; //type_node
