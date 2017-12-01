@@ -59,7 +59,7 @@ man:
 #	Dependencies for the compiler
 ###########################################################################
 compiler467: ${OBJs} ast.h
-${OBJs}:     common.h codegen.h
+${OBJs}:     common.h
 lex.yy.c:    scanner.l
 	$(LEX) $(LEXFLAGS) $<
 $(LEXER_OBJ): parser.tab.h

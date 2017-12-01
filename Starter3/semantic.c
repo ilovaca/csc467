@@ -854,7 +854,7 @@ string codegen(node * n, int reg_id = 0) {
             // destination
             out << alloc_reg(reg_id) << endl;
             auto arg = n->constructor_node.arguments;
-            for (int i = 0; i < num_args; i++) {
+            for (int i = num_args - 1; i != 0; i--) {
                 // reg_id++;
                 codegen(arg->arguments_node.right, reg_id + 1);
         
@@ -864,7 +864,7 @@ string codegen(node * n, int reg_id = 0) {
                 } else {
                     // left node is an expression;
                     codegen(arg->arguments_node.left, reg_id + 1);
-                    out << "MOV tempVar" << reg_id <<  "." << index[i] << ", tempVar" << reg_id + 1 << endl;
+                    out << "MOV tempVar" << reg_id <<  "." << index[i - 1] << ", tempVar" << reg_id + 1 << endl;
                     break;
                 }
             }
