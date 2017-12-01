@@ -106,6 +106,7 @@ struct node_ {
       int ival;
       float fval;
       bool bval;
+      std::string reg_name;
     } literal;
     struct {
       int type;
@@ -113,6 +114,7 @@ struct node_ {
       int index;
       type_code result_type;
       predef_attr attr;
+      std::string reg_name;
     } var_node;
     struct {
       int type; // name of the function
@@ -123,12 +125,15 @@ struct node_ {
       node* type; //type_node
       node* arguments;
       type_code result_type;
+      std::vector<std::string> reg_name;
     } constructor_node;
     struct {
       node* left; // more args...
       node* right; // current arg...
       int num_args;
       std::vector<type_code> args_type;
+      std::vector<int> reg_ids;
+      std::vector<std::string> reg_name;
     } arguments_node;
   };
 };

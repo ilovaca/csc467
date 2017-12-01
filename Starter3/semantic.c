@@ -2,8 +2,10 @@
 #include "semantic.h"
 #include "common.h"
 #include <iostream>
+#include <fstream>
 #include <cassert>
 #include "parser.tab.h"
+#include <set>
 using namespace std;
 /********** For Checking Write-only Variables *********/
 bool insideIfElse = false;
@@ -567,4 +569,382 @@ void semantic_check(node * n) {
         }
     default: assert(false);
   }
+}
+string codegen(node * n, int reg_id );
+
+// #define CODEGEN(x) {out << x << endl;}
+
+std::ofstream out ("frag.txt", std::ios::out);
+void codegen(){
+    if (!out) {
+        return;
+    }
+    out << "!!ARBfp1.0" << endl;
+    codegen(ast, 0);
+    out << "END"<< endl;
+    out.close();
+}
+int reg_bound = -1;
+std::set<int> reg_set;
+
+std::string alloc_reg(int reg_id) {
+    if (reg_set.find(reg_id) == reg_set.end()) {
+        // reg_bound = reg_id;
+        reg_set.insert(reg_id);
+        return "TEMP tempVar" + to_string( reg_id);
+    } else {
+        return "";
+    }
+}
+
+std::string alloc_const_reg(int reg_id) {
+    if (reg_set.find(reg_id) == reg_set.end()) {
+        reg_set.insert(reg_id);
+        return "PARAM tempVar" + to_string( reg_id);
+    } else {
+        return "";
+    }
+}
+
+std::string alloc_reg(std::string s) {
+    return "TEMP " + s;
+}
+
+
+std::string getRegName(node * n) {
+    if (!n) return "";
+    node_kind kind = n->kind;
+    std::string ret = "";
+    switch(kind) {
+        case VAR_NODE:{
+            ret = n->var_node.reg_name;
+            break;
+        }
+        case LITERAL_NODE:{
+            ret = n->literal.reg_name;
+            break;
+        }
+        default: assert(false);
+    }
+    return ret;
+}
+
+
+const char index[4] = {'x', 'y', 'z', 'w'};
+
+string codegen(node * n, int reg_id = 0) {
+  if (!n) return "";
+  cur_node = n;
+  // out << alloc_reg(reg_id) << endl;
+  node_kind kind = n->kind;
+  switch(kind) {
+    case SCOPE_NODE:
+        {
+            // entering a scope, push current symbol table to stack
+            symbol_stack.push_back(n->scope.symbol_table);
+            // SCOPE node does not consume registers.
+            // declaration and statements
+            if (n->scope.declarations) {
+                codegen(n->scope.declarations, reg_id );
+            }
+            if (n->scope.statements) {
+                codegen(n->scope.statements, reg_id );
+            }
+            // leaving current scope, pop it from stack
+            symbol_stack.pop_back();
+            break;
+        }
+    case DECLARATIONS_NODE:
+        {
+            if (n->declarations_node.left)
+                codegen(n->declarations_node.left, reg_id);
+            if (n->declarations_node.right)
+                codegen(n->declarations_node.right, reg_id);
+            break;
+        }
+    case DECLARATION_NODE:
+        {
+            std::string var_name = n->declaration_node.ident;
+            // out << "TEMP " << var_name << endl;
+            out << alloc_reg(var_name) << endl;
+            // code gen for expression if it exists
+            if (n->declaration_node.type == 1 || n->declaration_node.type == 2){
+                codegen(n->declaration_node.kids[1], reg_id);
+                // initialize the declaration 
+                out << "MOV " << var_name << ", tempVar" << reg_id << endl;
+            }
+            break;
+        }
+    case VAR_NODE:
+      {
+        n->var_node.reg_name = (n->var_node.ident);
+        return n->var_node.reg_name;
+        break;
+      }
+    case ASSIGNMENT_NODE:
+      {
+        // check lhs of assignment (variable)
+        insideAssignStatement = true;
+        // codegen(n->assignment_node.left, reg_id);
+        auto var = n->assignment_node.left->var_node.ident;
+        insideAssignStatement = false;
+        // check rhs of assignment (expression)
+        codegen(n->assignment_node.right, reg_id );
+        // check the type of variable
+        if (n->assignment_node.left->var_node.type == 0) {
+            // scalar assignment
+            out << "MOV " << var << ", tempVar" << reg_id << endl;
+        } else {
+            // vector indexing 
+            char c = 0;
+            switch(n->assignment_node.left->var_node.index) {
+                case 0: {
+                    c = 'x';
+                    break;
+                }
+                case 1: {
+                    c = 'y';
+                    break;
+                }
+                case 2: {
+                    c = 'z';
+                    break;
+                }
+                case 3: {
+                    c = 'w';
+                    break;
+                }
+                default: assert(false);
+            }
+            out << "MOV " << var << ", tempVar" << reg_id << "." << c << endl;
+        }
+        break;
+      }
+    case BINARY_EXPRESSION_NODE:
+      {
+        codegen(n->binary_expr.left, reg_id + 1);
+        codegen(n->binary_expr.right, reg_id + 2);
+        out << alloc_reg(reg_id) << endl;
+        // depends on the operation type...
+        switch(n->binary_expr.op){
+            case 0: {
+                // "&&"
+                // FIXME
+                out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                    << ", tempVar" << reg_id + 2 << endl;
+                break;
+            }
+            case 8: {
+                // +, -, *
+                out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                    << ", tempVar" << reg_id + 2 << endl;
+                break;
+            }
+            case 9: {
+                out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                    << ", tempVar" << reg_id + 2 << endl;
+                break;
+            }
+            case 10: {
+                out << "MUL " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                    << ", tempVar" << reg_id + 2 << endl;
+                break;
+            }
+            case 11: {
+                // find reciprocal of second operand
+                out << "RCP " << "tempVar" << reg_id + 2 << ", tempVar" << reg_id + 2  << ".x"<< endl;
+                out << "MUL " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
+                    << ", tempVar" << reg_id + 2 << endl;
+                break;
+            }
+            case 12: {
+                // "^"
+                // FIXME: EXP is base-two
+                // out << "EXP " << "tempVar" << reg_id << " ,"
+                break;
+            }
+            default: break;
+        }
+        break;
+      }
+    case UNARY_EXPRESION_NODE:
+      {
+        codegen(n->unary_expr.expr, reg_id + 1);
+        //
+        out << alloc_reg(reg_id) << endl;
+        int op = n->unary_expr.op;
+        if (op == 0) {
+            // "-" expr = 0 SUB expr
+            out << "MOV " << "tempVar" << reg_id << ", {0,0,0,0}" << endl;
+            out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id << ", tempVar" << reg_id + 1 << endl;
+        } else {
+            // "!"
+        }
+        break;
+      }
+    case LITERAL_NODE:
+      {
+        // literal is a scalar
+        // out << "PARAM " << "tempVar" << reg_id  << " = ";
+        out << alloc_reg(reg_id) << endl;
+        out << "MOV " << "tempVar" << reg_id << ", ";
+        if (n->literal.type == INT) {
+            // INT type is signified by 3 zeros 
+            out << "{ " << n->literal.ival << ", 0, 0, 0}" << endl;
+        } else if (n->literal.type == FLOAT){
+            out << "{ " << n->literal.fval << ", 1, 1, 1}" << endl;
+        } else {
+            // BOOL type is treated the same as INT, where 1 is true,
+            // -1 is false;
+            int bval = n->literal.bval? 1.0 : 0.0;
+            out << "{ " << bval << ", 0, 0, 0}" << endl;
+        }
+        n->literal.reg_name = "tempVar" + to_string(reg_id);
+        break;
+      }
+    case FUNCTION_NODE:
+      {
+        // if (n->function_node.args) {
+        //     if (n->function_node.args->kind == ARGUMENTS_NODE) {
+        //         // two arguments
+        //         codegen(n->function_node.args, reg_id + 1/*, reg_id + 2*/);
+        //     } else {
+        //         // only one argument
+        //         codegen(n->function_node.args, reg_id);
+        //     }
+        // }
+        codegen(n->function_node.args, reg_id + 1);
+        out << alloc_reg(reg_id) << endl;
+        // depending on the function, the return type can be different
+        if (n->function_node.type == 0) {
+            // DP3 has two args
+            // FIXME: need to conserve the register  from reg_id+1 to the number of arguments
+            auto regs = n->function_node.args->arguments_node.reg_name;
+            assert(regs.size() == 2);
+            out << "DP3 " << " tempVar" << reg_id << ", " << regs[0] 
+                                                  << ", " << regs[1] << endl;
+        } else if(n->function_node.type == 1) {
+            // vec4 lit(vec4)
+            // out << "LIT " << " tempVar" << reg_id << ", tempVar" << reg_id + 1 << endl;
+            out << "LIT " << " tempVar" << reg_id << "," << getRegName(n->function_node.args) << endl;
+        } else {
+            assert(n->function_node.type == 2);
+            // rsq(float/int)
+            // codegen(n->function_node.args, reg_id + 1);
+            // out << "RSQ " << " tempVar" << reg_id << ", tempVar" << reg_id + 1 << endl;
+            out << "RSQ " << " tempVar" << reg_id << "," << getRegName(n->function_node.args) << endl;
+        }
+        break;
+      }
+    case CONSTRUCTOR_NODE:
+      {
+        // constructor type
+        // codegen(n->constructor_node.type);
+        // check args if exists
+        if (n->constructor_node.arguments->kind != ARGUMENTS_NODE) {
+            // only one argument
+            codegen(n->constructor_node.arguments, reg_id + 1);
+            out << alloc_reg(reg_id) << endl; 
+            std::string reg_name;
+            reg_name = getRegName(n->constructor_node.arguments);
+            out << "MOV tempVar" << reg_id << ".x" << ", " << reg_name << endl;
+        } else {
+            // multiple args
+            auto num_args = getNumArgs(n->constructor_node.arguments);
+            // destination
+            out << alloc_reg(reg_id) << endl;
+            auto arg = n->constructor_node.arguments;
+            for (int i = 0; i < num_args; i++) {
+                // reg_id++;
+                codegen(arg->arguments_node.right, reg_id + 1);
+        
+                out << "MOV tempVar" << reg_id <<  "." << index[i] << ", tempVar" << reg_id + 1 << endl;
+                if (arg->arguments_node.left->kind == ARGUMENTS_NODE) {
+                    arg = arg->arguments_node.left;
+                } else {
+                    // left node is an expression;
+                    codegen(arg->arguments_node.left, reg_id + 1);
+                    out << "MOV tempVar" << reg_id <<  "." << index[i] << ", tempVar" << reg_id + 1 << endl;
+                    break;
+                }
+            }
+            // auto regs = n->constructor_node.arguments->arguments_node.reg_name;
+            // char c = 'x';
+            // for (int i = 0; i < regs.size(); i++, c++) {
+            //     if (i == 3) {
+            //         out << "MOV tempVar" << reg_id <<  "." << 'w' << ", " << regs[i] << endl;
+            //     } else {
+            //         out << "MOV tempVar" << reg_id <<  "." << c << ", " << regs[i] << endl;
+            //     }
+            // }
+        }
+        break;
+      }
+    case STATEMENTS_NODE:
+        {
+            if (n->statements_node.left)
+                codegen(n->statements_node.left);
+            if (n->statements_node.right)
+                codegen(n->statements_node.right);
+            break;
+        }
+    case IF_STATEMENT_NODE:
+        {
+            // check condition
+            codegen(n->if_stmt_node.kids[0]);
+            type_code cond_type = getType(n->if_stmt_node.kids[0]);
+            if (cond_type != BOOL){
+                SEMANTIC_ERROR("ERROR: invalid type to condition");
+            }
+            // check then_statement
+            insideIfElse = true;
+            codegen(n->if_stmt_node.kids[1]);
+            insideIfElse = false;
+            // check else_statement if exists
+            if (n->if_stmt_node.withElse) {
+                assert (n->if_stmt_node.kids[2] != NULL);
+                insideIfElse = true;
+                codegen(n->if_stmt_node.kids[2]);
+                insideIfElse = false;
+            }
+            break;
+        }
+    case ARGUMENTS_NODE:
+        {
+            codegen(n->arguments_node.left, reg_id);
+            codegen(n->arguments_node.right, reg_id + 1);
+            // out << alloc_reg(reg_id) << endl;
+            if (n->arguments_node.left) {
+                if (n->arguments_node.left->kind == ARGUMENTS_NODE) {
+                    // n->arguments_node.reg_name = n->arguments_node.left->arguments_node.reg_name;
+                    // if left node is a ARGUMENT_NODE, then append its list of registers over
+                    n->arguments_node.reg_name.insert(n->arguments_node.reg_name.end(),
+                                n->arguments_node.left->arguments_node.reg_name.begin(),
+                                n->arguments_node.left->arguments_node.reg_name.end());
+                } else {
+                    // left argument is an expression, just append it
+                    n->arguments_node.reg_name.push_back(getRegName(n->arguments_node.left));
+                }
+            }
+            // append right registers
+            if (n->arguments_node.right) {
+                n->arguments_node.reg_name.push_back(getRegName(n->arguments_node.right));
+            }
+            // get number
+            break;
+        }
+    case TYPE_NODE:
+        {
+            break;
+        }
+    default: assert(false);
+    }
+    return "";
+}
+
+
+std::vector<string> getArgRegs(node * n) {
+    std::vector<string> ret;
+    if (n == NULL) return ret;
+
 }

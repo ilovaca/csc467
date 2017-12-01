@@ -43,7 +43,7 @@ PARSER_OBJ=parser.o
 AST_OBJ   =ast.o semantic.o symbol.o
 #CODE_OBJ  =codegen.o  
 OBJs      =compiler467.o globalvars.o $(LEXER_OBJ) \
-           $(PARSER_OBJ) $(AST_OBJ)   
+           $(PARSER_OBJ) $(AST_OBJ) 
 
 ###########################################################################
 #	PHONY rules
@@ -59,7 +59,7 @@ man:
 #	Dependencies for the compiler
 ###########################################################################
 compiler467: ${OBJs} ast.h
-${OBJs}:     common.h 
+${OBJs}:     common.h codegen.h
 lex.yy.c:    scanner.l
 	$(LEX) $(LEXFLAGS) $<
 $(LEXER_OBJ): parser.tab.h
