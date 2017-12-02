@@ -570,9 +570,8 @@ void semantic_check(node * n) {
     default: assert(false);
   }
 }
-string codegen(node * n, int reg_id );
 
-// #define CODEGEN(x) {out << x << endl;}
+string codegen(node * n, int reg_id );
 
 std::ofstream out ("frag.txt", std::ios::out);
 void codegen(){
@@ -648,6 +647,8 @@ const char index[4] = {'x', 'y', 'z', 'w'};
 
 
 string if_cond_reg = "";
+string prev_cond = "";
+bool nestedIF = false;
 bool insideTHEN = false;
 bool insideELSE = false;
 string codegen(node * n, int reg_id = 0) {
@@ -771,29 +772,96 @@ string codegen(node * n, int reg_id = 0) {
         switch(n->binary_expr.op){
             case 0: {
                 // "&&"
-                // FIXME
-                out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                    << ", tempVar" << reg_id + 2 << endl;
+                out << "MUL " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
                 break;
             }
+            case 1: {
+                // ||
+                out << "MUL " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.right)
+                    << " , " << "tempVar" << reg_id<< ";" << endl;
+                out << "ADD " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << "{0,0,0,0}" << ";" << endl;
+                break;
+            }
+            case 2: {
+                // ==
+                // temp = x - y
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
+                auto reg2 = alloc_reg(reg_id + 1);
+                if (!reg2.empty()) {
+                    out << reg2 << ";" << endl;
+                }
+                // temp2 = y - x
+                out << "SUB " << "tempVar" << reg_id + 1 << ", " << getRegName(n->binary_expr.right)
+                    << " , " << getRegName(n->binary_expr.left)<< ";" << endl;
+                
+                out << "CMP " << "tempVar" << reg_id << ", " << "tempVar" << reg_id << ", {0,0,0,0}" << ", {1,1,1,1}" << ";" << endl;
+                out << "CMP " << "tempVar" << reg_id + 1 << ", " << "tempVar" << reg_id + 1 << ", {0,0,0,0}" << ", {1,1,1,1}" << ";" << endl;
+                out << "MUL " << "tempVar" << reg_id << ", tempVar" << reg_id  << ", tempVar" << reg_id + 1 <<  ";" << endl;
+                break;
+            }
+            case 3: {
+                // !=
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
+                auto reg2 = alloc_reg(reg_id + 1);
+                if (!reg2.empty()) {
+                    out << reg2 << ";" << endl;
+                }
+                // temp2 = y - x
+                out << "SUB " << "tempVar" << reg_id + 1 << ", " << getRegName(n->binary_expr.right)
+                    << " , " << getRegName(n->binary_expr.left)<< ";" << endl;
+                out << "CMP " << "tempVar" << reg_id << ", " << "tempVar" << reg_id << ", {1,1,1,1}" << ", {0,0,0,0}" << ";" << endl;
+                out << "CMP " << "tempVar" << reg_id + 1 << ", " << "tempVar" << reg_id + 1 << ", {1,1,1,1}" << ", {0,0,0,0}" << ";" << endl;
+                out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id  << ", tempVar" << reg_id + 1 <<  ";" << endl;
+                break;
+            }
+            case 4: {
+                // <
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
+                out << "CMP " << "tempVar" << reg_id << ", " << "tempVar" << reg_id << ", {1,1,1,1}" << ", {0,0,0,0}" << ";" << endl;
+                break;
+            }
+            case 5: {
+                // <=
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.right)
+                    << " , " << getRegName(n->binary_expr.left)<< ";" << endl;
+                out << "CMP " << "tempVar" << reg_id << ", " << "tempVar" << reg_id << ", {0,0,0,0}" << ", {1,1,1,1}" << ";" << endl;
+                break;
+            }
+            case 6: {
+                // >
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.right)
+                    << " , " << getRegName(n->binary_expr.left)<< ";" << endl;
+                out << "CMP " << "tempVar" << reg_id << ", " << "tempVar" << reg_id << ", {1,1,1,1}" << ", {0,0,0,0}" << ";" << endl;
+                break;
+            }
+            case 7: {
+                // >=
+                out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
+                out << "CMP " << "tempVar" << reg_id << ", " << "tempVar" << reg_id << ", {0,0,0,0}" << ", {1,1,1,1}" << ";" << endl;
+
+                break;
+
+            }
             case 8: {
-                // +, -, *
-                // out << "ADD " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                //     << ", tempVar" << reg_id + 2 << endl;
+                // +
                 out << "ADD " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
                     << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
                 break;
             }
             case 9: {
-                // out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                //     << ", tempVar" << reg_id + 2 << endl;
                 out << "SUB " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
                     << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
                 break;
             }
             case 10: {
-                // out << "MUL " << "tempVar" << reg_id << ", tempVar" << reg_id + 1
-                //     << ", tempVar" << reg_id + 2 << endl;
                 out << "MUL " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
                     << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
                 break;
@@ -807,8 +875,8 @@ string codegen(node * n, int reg_id = 0) {
             }
             case 12: {
                 // "^"
-                // FIXME: EXP is base-two
-                // out << "EXP " << "tempVar" << reg_id << " ,"
+                out << "POW " << "tempVar" << reg_id << ", " << getRegName(n->binary_expr.left)
+                    << " , " << getRegName(n->binary_expr.right)<< ";" << endl;
                 break;
             }
             default: break;
@@ -828,32 +896,31 @@ string codegen(node * n, int reg_id = 0) {
         if (op == 0) {
             // "-" expr = 0 SUB expr
             out << "MOV " << "tempVar" << reg_id << ", {0,0,0,0}"<< ";" << endl;
-            out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id << ", tempVar" << reg_id + 1 << ";"<< endl;
+            out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id << ", " << getRegName(n->unary_expr.expr) << ";"<< endl;
         } else {
             // "!"
+            out << "MOV " << "tempVar" << reg_id << ", {0,0,0,0}"<< ";" << endl;
+            out << "SUB " << "tempVar" << reg_id << ", tempVar" << reg_id << ", " << getRegName(n->unary_expr.expr) << ";" << endl; 
         }
         n->unary_expr.reg_name = "tempVar" + to_string(reg_id);
         break;
       }
     case LITERAL_NODE:
       {
-        // literal is a scalar
-        // out << "PARAM " << "tempVar" << reg_id  << " = ";
         auto reg = alloc_reg(reg_id);
         if (!reg.empty()) {
             out << reg << ";" << endl;
         }        
         out << "MOV " << "tempVar" << reg_id << ", ";
         if (n->literal.type == INT) {
-            // INT type is signified by 3 zeros 
-            out << "{ " << n->literal.ival << ", 0, 0, 0}" << ";"<< endl;
+            // int literal
+            out << "{ " << n->literal.ival << ", " << n->literal.ival<< ", " << n->literal.ival<<", " << n->literal.ival<< "}"  << ";"<< endl;
         } else if (n->literal.type == FLOAT){
-            out << "{ " << n->literal.fval << ", 1, 1, 1}" << ";"<< endl;
+            out << "{ " << n->literal.fval << ", " << n->literal.fval<< ", " << n->literal.fval<<", " << n->literal.fval<< "}"  << ";"<< endl;
         } else {
-            // BOOL type is treated the same as INT, where 1 is true,
-            // -1 is false;
+            // BOOL type is treated the same as INT, where 1 is true, 0 is false;
             int bval = n->literal.bval? 1.0 : 0.0;
-            out << "{ " << bval << ", 0, 0, 0}" << ";"<< endl;
+            out << "{ " << bval << ", " << bval << ", " << bval<<", " << bval<< "}"  << ";"<< endl;
         }
         n->literal.reg_name = "tempVar" + to_string(reg_id);
         break;
@@ -868,20 +935,16 @@ string codegen(node * n, int reg_id = 0) {
         // depending on the function, the return type can be different
         if (n->function_node.type == 0) {
             // DP3 has two args
-            // FIXME: need to conserve the register  from reg_id+1 to the number of arguments
             auto regs = n->function_node.args->arguments_node.reg_name;
             assert(regs.size() == 2);
             out << "DP3 " << " tempVar" << reg_id << ", " << regs[0] 
                                                   << ", " << regs[1] << ";"<< endl;
         } else if(n->function_node.type == 1) {
             // vec4 lit(vec4)
-            // out << "LIT " << " tempVar" << reg_id << ", tempVar" << reg_id + 1 << endl;
             out << "LIT " << " tempVar" << reg_id << "," << getRegName(n->function_node.args) << ";"<< endl;
         } else {
             assert(n->function_node.type == 2);
             // rsq(float/int)
-            // codegen(n->function_node.args, reg_id + 1);
-            // out << "RSQ " << " tempVar" << reg_id << ", tempVar" << reg_id + 1 << endl;
             out << "RSQ " << " tempVar" << reg_id << "," << getRegName(n->function_node.args) << ";"<< endl;
         }
         n->function_node.reg_name = "tempVar" + to_string(reg_id);
@@ -889,8 +952,6 @@ string codegen(node * n, int reg_id = 0) {
       }
     case CONSTRUCTOR_NODE:
       {
-        // constructor type
-        // codegen(n->constructor_node.type);
         // check args if exists
         if (n->constructor_node.arguments->kind != ARGUMENTS_NODE) {
             // only one argument
@@ -942,8 +1003,19 @@ string codegen(node * n, int reg_id = 0) {
             // generate condition
             codegen(n->if_stmt_node.kids[0], reg_id);
             // the condition register
-            // out << alloc_reg(reg_id) << endl;
-            if_cond_reg = getRegName(n->if_stmt_node.kids[0]);
+            if (insideIfElse && insideTHEN) {
+                assert(!if_cond_reg.empty());
+                auto current_cond = getRegName(n->if_stmt_node.kids[0]);
+                // THEN condition = current_cond && if_cond_reg
+                prev_cond = if_cond_reg;
+                out << "MUL " << if_cond_reg << ", " << current_cond
+                    << " , " << if_cond_reg << ";" << endl;
+            } else if (insideIfElse && insideELSE) {
+                // ELSE condition = !current_cond && if_cond_reg
+
+            } else {
+                if_cond_reg = getRegName(n->if_stmt_node.kids[0]);
+            }
             // then_statement
             insideIfElse = true;
             insideTHEN = true;
@@ -959,13 +1031,14 @@ string codegen(node * n, int reg_id = 0) {
                 insideELSE = false;
                 insideIfElse = false;
             }
+            // leaving if
+            if_cond_reg = prev_cond;
             break;
         }
     case ARGUMENTS_NODE:
         {
             codegen(n->arguments_node.left, reg_id);
             codegen(n->arguments_node.right, reg_id + 1);
-            // out << alloc_reg(reg_id) << endl;
             if (n->arguments_node.left) {
                 if (n->arguments_node.left->kind == ARGUMENTS_NODE) {
                     // n->arguments_node.reg_name = n->arguments_node.left->arguments_node.reg_name;
